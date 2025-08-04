@@ -21,7 +21,7 @@ function McqGenerator() {
     }
 
     setLoading(true);
-    setMcqs(""); // Clear previous MCQs
+    setMcqs("");
     const formData = new FormData();
     formData.append("file", file);
 
@@ -76,7 +76,6 @@ function McqGenerator() {
     <div className="card mcq-card">
       <h2>MCQ Generator</h2>
       
-      {/* File input and button using our new styles */}
       <div className="file-input-container">
         <div className="file-input-wrapper">
           <input 
@@ -91,7 +90,6 @@ function McqGenerator() {
         <span className="file-name-display">{fileName}</span>
       </div>
       
-      {/* Generate button is now correctly linked */}
       <button 
         className="button generate-button" 
         onClick={handleGenerateMCQs}
@@ -100,10 +98,8 @@ function McqGenerator() {
         {loading ? "Generating..." : "Generate MCQs"}
       </button>
 
-      {/* Loading state */}
       {loading && <p>⚙️ Generating MCQs...</p>}
 
-      {/* MCQs output and download buttons */}
       {mcqs && !loading && (
         <>
           <div className="output">
