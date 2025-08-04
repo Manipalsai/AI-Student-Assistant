@@ -1,3 +1,4 @@
+
 {
   "version": 2,
   "builds": [
@@ -23,4 +24,5 @@
       "dest": "/Frontend/dist/$1"
     }
   ]
+
 }
