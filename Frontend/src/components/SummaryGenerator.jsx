@@ -29,12 +29,13 @@ const handleGenerateSummary = async () => {
     formData.append("file", file);
 
     try {
-    const response = await axios.post("http://localhost:8000/summarize", formData);
+    const response = await axios.post("https://your-public-backend-url.com/summarize", formData);
     setSummary(response.data.summary);
-    } catch (error) {
-    console.error("Error fetching summary:", error);
-    alert("Failed to generate summary. Check the backend.");
-    } finally {
+} catch (error) {
+    // Your error handling logic goes here
+    console.error("Error generating summary:", error);
+    alert("Failed to generate summary. Please check your backend server.");
+}finally {
     setLoading(false);
     }
 };
