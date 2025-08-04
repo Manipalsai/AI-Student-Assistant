@@ -13,16 +13,15 @@ const [loading, setLoading] = useState(false);
 const startQuiz = async () => {
     setLoading(true);
     try {
-    const res = await axios.get("https://your-public-backend-url.com/get-quiz");
+    const res = await axios.get("/api/get-quiz");
     setMcqs(res.data.mcqs);
     setStarted(true);
 } catch (err) {
     console.error("Quiz load error:", err);
     alert(" Failed to load quiz. Check backend.");
-}finally {
+} finally {
     setLoading(false);
-    }
-};
+}
 
 const handleSubmit = () => {
     if (selected === mcqs[current]?.answer) {

@@ -22,7 +22,7 @@ const handleGenerateMCQs = async () => {
     formData.append("file", file);
 
     try {
-    const response = await axios.post("https://your-public-backend-url.com/generate-mcqs", formData);
+    const response = await axios.post("/api/generate-mcqs", formData);
     console.log("MCQs:", response.data.mcqs);
     setMcqs(response.data.mcqs);
 } catch (error) {
@@ -30,8 +30,7 @@ const handleGenerateMCQs = async () => {
     alert("Failed to generate MCQs. Check backend and file.");
 } finally {
     setLoading(false);
-    }
-};
+}
 
 const handleSaveTxt = () => {
     if (!mcqs) {

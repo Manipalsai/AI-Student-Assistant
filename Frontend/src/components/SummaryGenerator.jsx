@@ -29,16 +29,15 @@ const handleGenerateSummary = async () => {
     formData.append("file", file);
 
     try {
-    const response = await axios.post("https://your-public-backend-url.com/summarize", formData);
+    const response = await axios.post("/api/summarize", formData);
     setSummary(response.data.summary);
 } catch (error) {
-    // Your error handling logic goes here
     console.error("Error generating summary:", error);
     alert("Failed to generate summary. Please check your backend server.");
-}finally {
+} finally {
     setLoading(false);
-    }
-};
+}
+
 
 const handleDownloadPDF = () => {
     const doc = new jsPDF();
