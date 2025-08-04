@@ -9,9 +9,10 @@ import os
 import shutil # Import shutil for safe file operations
 
 
-from .summarize_text import summarize_text
-from .generate_mcqs import generate_mcqs 
-from .run_quiz import load_mcqs
+from summarize_text import summarize_text
+from generate_mcqs import generate_mcqs 
+from run_quiz import load_mcqs
+from text_extractor import extract_text
 
 app = FastAPI()
 
