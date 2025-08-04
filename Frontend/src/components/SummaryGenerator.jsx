@@ -3,43 +3,47 @@ import axios from "axios";
 import jsPDF from "jspdf";
 import { saveAs } from "file-saver";
 import {
-Document,
-Packer,
-Paragraph,
-TextRun
+  Document,
+  Packer,
+  Paragraph,
+  TextRun
 } from "docx";
 
 function SummaryGenerator() {
-const [file, setFile] = useState(null);
-const [summary, setSummary] = useState("");
-const [loading, setLoading] = useState(false);
+  const [file, setFile] = useState(null);
+  const [fileName, setFileName] = useState("No file chosen");
+  const [summary, setSummary] = useState("");
+  const [loading, setLoading] = useState(false);
 
-const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
-};
+  const handleFileChange = (e) => {
+    const uploadedFile = e.target.files[0];
+    setFile(uploadedFile);
+    setFileName(uploadedFile ? uploadedFile.name : "No file chosen");
+  };
 
-const handleGenerateSummary = async () => {
+  const handleGenerateSummary = async () => {
     if (!file) {
-    alert("Please upload a file first!");
-    return;
+      alert("Please upload a file first!");
+      return;
     }
 
     setLoading(true);
+    setSummary(""); // Clear previous summary
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-    const response = await axios.post("/api/summarize", formData);
-    setSummary(response.data.summary);
-} catch (error) {
-    console.error("Error generating summary:", error);
-    alert("Failed to generate summary. Please check your backend server.");
-} finally {
-    setLoading(false);
-}
+      const response = await axios.post("/api/summarize", formData);
+      setSummary(response.data.summary);
+    } catch (error) {
+      console.error("Error generating summary:", error);
+      alert("Failed to generate summary. Please check your backend server.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-
-const handleDownloadPDF = () => {
+  const handleDownloadPDF = () => {
     const doc = new jsPDF();
     const pageHeight = doc.internal.pageSize.height;
     const margin = 10;
@@ -51,72 +55,81 @@ const handleDownloadPDF = () => {
     const lines = doc.splitTextToSize(summary, 180);
 
     lines.forEach((line) => {
-    if (y + lineHeight > pageHeight - margin) {
+      if (y + lineHeight > pageHeight - margin) {
         doc.addPage();
         y = margin;
-    }
-    doc.text(line, margin, y);
-    y += lineHeight;
+      }
+      doc.text(line, margin, y);
+      y += lineHeight;
     });
 
     doc.save("summary_output.pdf");
-};
+  };
 
-const handleDownloadDocx = () => {
+  const handleDownloadDocx = () => {
     const doc = new Document({
-    sections: [
+      sections: [
         {
-        children: summary.split("\n").map((line) =>
+          children: summary.split("\n").map((line) =>
             new Paragraph({
-            children: [new TextRun(line)],
+              children: [new TextRun(line)],
             })
-        ),
+          ),
         },
-    ],
+      ],
     });
 
     Packer.toBlob(doc).then((blob) => {
-    saveAs(blob, "summary_output.docx");
+      saveAs(blob, "summary_output.docx");
     });
-};
+  };
 
-return (
+  return (
     <div className="card summary-card">
-    <h2> Summary Generator</h2>
-    <input type="file" onChange={handleFileChange} />
-    <button onClick={handleGenerateSummary}>Generate Summary</button>
+      <h2>Summary Generator</h2>
+      
+      {/* File input and button using our new styles */}
+      <div className="file-input-container">
+        <div className="file-input-wrapper">
+          <input 
+            type="file" 
+            id="file-input-summary" 
+            onChange={handleFileChange} 
+          />
+          <label htmlFor="file-input-summary" className="choose-file-button">
+            Choose File
+          </label>
+        </div>
+        <span className="file-name-display">{fileName}</span>
+      </div>
+      
+      {/* Generate button is now correctly linked */}
+      <button 
+        className="button generate-button" 
+        onClick={handleGenerateSummary}
+        disabled={loading}
+      >
+        {loading ? "Generating..." : "Generate Summary"}
+      </button>
 
-    {loading && <p>⏳ Generating summary...</p>}
+      {/* Loading state */}
+      {loading && <p>⏳ Generating summary...</p>}
 
-    {summary && !loading && (
+      {/* Summary output and download buttons */}
+      {summary && !loading && (
         <>
-        <div
-            style={{
-            maxHeight: "300px",
-            overflowY: "auto",
-            padding: "1em",
-            marginTop: "1em",
-            background: "#f8f8f8",
-            fontFamily: "Arial, sans-serif",
-            fontSize: "14px",
-            lineHeight: "1.6",
-            borderRadius: "8px",
-            whiteSpace: "pre-wrap",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-            color: "#000"
-            }}
-        >
+          <div className="output">
             {summary}
-        </div>
+          </div>
 
-        <div style={{ marginTop: "10px" }}>
-            <button onClick={handleDownloadPDF}>📄 Download as PDF</button>
-            <button onClick={handleDownloadDocx}>📝 Download as DOCX</button>
-        </div>
+          <div className="button-group">
+            <button onClick={handleDownloadPDF} className="button">📄 Download as PDF</button>
+            <button onClick={handleDownloadDocx} className="button">📝 Download as DOCX</button>
+          </div>
         </>
-    )}
+      )}
     </div>
-);
+  );
 }
 
 export default SummaryGenerator;
