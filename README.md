@@ -70,7 +70,3 @@ The application will open in your browser at `http://localhost:5173` (or a simil
 ### 🤝 Contributing
 
 This project is a great starting point for anyone interested in full-stack development and AI applications. Feel free to fork the repository, add new features, and improve the UI!
-
-### 📂 Project Structure
-
-This is the file structure for the main components of the project:
