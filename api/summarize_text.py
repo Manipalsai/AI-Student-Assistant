@@ -1,3 +1,7 @@
+# =========================================================================
+# FINAL summarize_text.py - Corrected to accept model as a parameter
+# =========================================================================
+
 import google.generativeai as genai
 import os
 from datetime import datetime
@@ -5,13 +9,10 @@ from text_extractor import extract_text
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
-#SETUP
-GOOGLE_API_KEY = "AIzaSyB4x81dLPbD2ygOiJSZOg1ZrCvKleTQ0Co"
-genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel("gemini-1.5-flash") # THIS IS THE LINE TO CHANGE
+# Remove all hardcoded API keys and configure calls
 
-#GENERATE CLEAN SUMMARY
-def summarize_text(file_path):
+# GENERATE CLEAN SUMMARY
+def summarize_text_with_model(file_path, model):
     try:
         extracted_text = extract_text(file_path)
 
@@ -33,8 +34,6 @@ Text:
         return response.text.strip()
     except Exception as e:
         print(f"An error occurred during summarization: {e}")
-        # Return an error message or re-raise the exception, depending on your server's needs.
-        # Returning a clear message is a good practice for API endpoints.
         return f"Error: Failed to generate summary. Details: {e}"
 
 #SAVE TO PDF
@@ -63,14 +62,13 @@ def save_summary_to_pdf(summary_text, filename="summary_output.pdf"):
     c.save()
     print(f"✅ Summary saved to PDF as '{filename}'")
 
-#MAIN (Testing)
-if __name__ == "__main__":
-    file_path = "sample.pdf"
-    summary = summarize_text(file_path)
-    
-    print("\n=== SUMMARY ===\n")
-    print(summary)
-
-    # Only save to PDF if the summary was generated successfully
-    if not summary.startswith("Error:"):
-        save_summary_to_pdf(summary)
+# The testing block is not needed for the Vercel deployment
+# if __name__ == "__main__":
+#     file_path = "sample.pdf"
+#     summary = summarize_text(file_path)
+#     
+#     print("\n=== SUMMARY ===\n")
+#     print(summary)
+# 
+#     if not summary.startswith("Error:"):
+#         save_summary_to_pdf(summary)

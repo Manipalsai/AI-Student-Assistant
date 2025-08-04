@@ -1,135 +1,74 @@
-import React, { useState } from "react";
-import axios from "axios";
-import jsPDF from "jspdf";
-import { saveAs } from "file-saver";
-import {
-  Document,
-  Packer,
-  Paragraph,
-  TextRun
-} from "docx";
+# =========================================================================
+# FINAL summarize_text.py - Corrected to accept model as a parameter
+# =========================================================================
 
-function SummaryGenerator() {
-  const [file, setFile] = useState(null);
-  const [fileName, setFileName] = useState("No file chosen");
-  const [summary, setSummary] = useState("");
-  const [loading, setLoading] = useState(false);
+import google.generativeai as genai
+import os
+from datetime import datetime
+from text_extractor import extract_text 
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
-  const handleFileChange = (e) => {
-    const uploadedFile = e.target.files[0];
-    setFile(uploadedFile);
-    setFileName(uploadedFile ? uploadedFile.name : "No file chosen");
-  };
+# Remove all hardcoded API keys and configure calls
 
-  const handleGenerateSummary = async () => {
-    if (!file) {
-      alert("Please upload a file first!");
-      return;
-    }
+# GENERATE CLEAN SUMMARY
+def summarize_text_with_model(file_path, model):
+    try:
+        extracted_text = extract_text(file_path)
 
-    setLoading(true);
-    setSummary(""); // Clear previous summary
-    const formData = new FormData();
-    formData.append("file", file);
+        prompt = f"""
+You are a study assistant. Your task is to generate a clean, readable summary of the following text.
 
-    try {
-      const response = await axios.post("/api/summarize", formData);
-      setSummary(response.data.summary);
-    } catch (error) {
-      console.error("Error generating summary:", error);
-      alert("Failed to generate summary. Please check your backend server.");
-    } finally {
-      setLoading(false);
-    }
-  };
+📝 Instructions:
+- The output should be in simple plain text.
+- Use clear section headings like "Arrays", "Linked Lists", "Stacks and Queues", etc.
+- Do NOT use any Markdown symbols like # or **.
+- Each section should start with a title and a brief paragraph summarizing that topic.
+- The summary should be structured, informative, and readable.
 
-  const handleDownloadPDF = () => {
-    const doc = new jsPDF();
-    const pageHeight = doc.internal.pageSize.height;
-    const margin = 10;
-    const lineHeight = 10;
-    let y = margin;
+Text:
+{extracted_text}
+        """
 
-    doc.setFont("Times", "normal");
-    doc.setFontSize(12);
-    const lines = doc.splitTextToSize(summary, 180);
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        print(f"An error occurred during summarization: {e}")
+        return f"Error: Failed to generate summary. Details: {e}"
 
-    lines.forEach((line) => {
-      if (y + lineHeight > pageHeight - margin) {
-        doc.addPage();
-        y = margin;
-      }
-      doc.text(line, margin, y);
-      y += lineHeight;
-    });
+#SAVE TO PDF
+def save_summary_to_pdf(summary_text, filename="summary_output.pdf"):
+    c = canvas.Canvas(filename, pagesize=letter)
+    width, height = letter
 
-    doc.save("summary_output.pdf");
-  };
+    title = "Study Material Summary"
+    date_str = datetime.now().strftime("%B %d, %Y")
 
-  const handleDownloadDocx = () => {
-    const doc = new Document({
-      sections: [
-        {
-          children: summary.split("\n").map((line) =>
-            new Paragraph({
-              children: [new TextRun(line)],
-            })
-          ),
-        },
-      ],
-    });
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(72, height - 72, title)
+    c.setFont("Helvetica", 11)
+    c.drawString(72, height - 90, f"Date: {date_str}")
 
-    Packer.toBlob(doc).then((blob) => {
-      saveAs(blob, "summary_output.docx");
-    });
-  };
+    text_obj = c.beginText(72, height - 120)
+    text_obj.setFont("Helvetica", 11)
 
-  return (
-    <div className="card summary-card">
-      <h2>Summary Generator</h2>
-      
-      {/* File input and button using our new styles */}
-      <div className="file-input-container">
-        <div className="file-input-wrapper">
-          <input 
-            type="file" 
-            id="file-input-summary" 
-            onChange={handleFileChange} 
-          />
-          <label htmlFor="file-input-summary" className="choose-file-button">
-            Choose File
-          </label>
-        </div>
-        <span className="file-name-display">{fileName}</span>
-      </div>
-      
-      {/* Generate button is now correctly linked */}
-      <button 
-        className="button generate-button" 
-        onClick={handleGenerateSummary}
-        disabled={loading}
-      >
-        {loading ? "Generating..." : "Generate Summary"}
-      </button>
+    for line in summary_text.split("\n"):
+        if line.strip() == "":
+            text_obj.textLine(" ")
+        else:
+            text_obj.textLine(line.strip())
 
-      {/* Loading state */}
-      {loading && <p>⏳ Generating summary...</p>}
+    c.drawText(text_obj)
+    c.save()
+    print(f"✅ Summary saved to PDF as '{filename}'")
 
-      {/* Summary output and download buttons */}
-      {summary && !loading && (
-        <>
-          <div className="output">
-            {summary}
-          </div>
-
-          <div className="button-group">
-            <button onClick={handleDownloadPDF} className="button">📄 Download as PDF</button>
-            <button onClick={handleDownloadDocx} className="button">📝 Download as DOCX</button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-export default SummaryGenerator;
+# The testing block is not needed for the Vercel deployment
+# if __name__ == "__main__":
+#     file_path = "sample.pdf"
+#     summary = summarize_text(file_path)
+#     
+#     print("\n=== SUMMARY ===\n")
+#     print(summary)
+# 
+#     if not summary.startswith("Error:"):
+#         save_summary_to_pdf(summary)
