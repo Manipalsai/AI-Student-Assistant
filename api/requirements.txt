@@ -6,3 +6,4 @@ reportlab
 fpdf
 pypdf2
 python-docx
+markdown
