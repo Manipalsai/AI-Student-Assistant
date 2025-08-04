@@ -1,7 +1,3 @@
-# =========================================================================
-# FINAL app.py - All backend logic consolidated and Vercel-ready
-# =========================================================================
-
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -16,6 +12,7 @@ import re
 import random
 from io import BytesIO
 from fpdf import FPDF
+from fastapi.responses import JSONResponse, StreamingResponse
 
 # This is the single file extractor
 def extract_text(file_path):
