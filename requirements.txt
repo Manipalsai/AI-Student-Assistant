@@ -4,3 +4,5 @@ python-multipart
 google-generativeai
 reportlab
 fpdf
+pypdf2
+python-docx
