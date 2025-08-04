@@ -1,6 +1,7 @@
 # =========================================================================
-# FINAL app.py - Corrected to pass the model instance
+# FINAL app.py - All backend logic consolidated and Vercel-ready
 # =========================================================================
+
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -17,12 +18,13 @@ from io import BytesIO
 from fpdf import FPDF
 
 # Import your local modules now that they are in the same folder
-from summarize_text import summarize_text_with_model
-from generate_mcqs import generate_mcqs_with_model
+from summarize_text import summarize_text
+from generate_mcqs import generate_mcqs
 from run_quiz import load_mcqs
 from text_extractor import extract_text
 
 app = FastAPI()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -50,7 +52,8 @@ async def summarize(file: UploadFile = File(...)):
         with open(file_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
         
-        summary = summarize_text_with_model(file_path, model)
+        # We need to make sure the summarize_text function is defined and used correctly
+        summary = summarize_text(file_path)
         
         return JSONResponse(content={"summary": summary})
     except Exception as e:
@@ -67,7 +70,7 @@ async def generate_mcqs_api(file: UploadFile = File(...)):
         with open(file_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
         
-        mcqs_text, _ = generate_mcqs_with_model(file_path, model)
+        mcqs_text, _ = generate_mcqs(file_path)
         return {"mcqs": mcqs_text}
     except Exception as e:
         print(f"Error generating MCQs: {e}")
@@ -94,6 +97,8 @@ async def save_pdf(data: MCQRequest):
         "Content-Disposition": "attachment; filename=mcqs_output.pdf"
     })
 
+# The /get-quiz endpoint must be refactored to not rely on a local file
+# This is a placeholder and should be removed. The MCQs are already handled by the frontend.
 @app.get("/api/get-quiz")
 def get_quiz():
     raise HTTPException(status_code=404, detail="This endpoint is not used in this version.")
