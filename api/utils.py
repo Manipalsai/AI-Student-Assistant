@@ -1,5 +1,9 @@
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
 import google.generativeai as genai
 import os
+
+print("🚀 BACKEND STARTING: AI Student Assistant API is loading...")
 import json
 import typing
 import time
