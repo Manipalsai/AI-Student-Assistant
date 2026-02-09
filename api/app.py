@@ -7,7 +7,7 @@ import shutil
 import tempfile
 from dotenv import load_dotenv
 
-# Load local .env file if it exists
+# Load environment variables
 load_dotenv()
 
 # Import utilities
@@ -37,11 +37,15 @@ class ChatRequest(BaseModel):
 
 @app.get("/")
 async def root():
-    return {"message": "AI Student Assistant API is running", "docs": "/docs"}
+    return {"message": "AI Student Assistant API is running"}
 
 @app.get("/api/health")
 async def health():
-    return {"status": "healthy", "api_key_configured": bool(os.environ.get("GOOGLE_API_KEY"))}
+    return {
+        "status": "healthy", 
+        "api_key_configured": bool(os.environ.get("GOOGLE_API_KEY")),
+        "key_preview": os.environ.get("GOOGLE_API_KEY", "")[:5] + "..." if os.environ.get("GOOGLE_API_KEY") else "None"
+    }
 
 @app.post("/api/extract-text")
 async def api_extract_text(file: UploadFile = File(...)):
@@ -57,7 +61,7 @@ async def api_extract_text(file: UploadFile = File(...)):
         text = extract_text(temp_path)
         os.remove(temp_path)
         if not text:
-            raise HTTPException(status_code=500, detail="Failed to extract text")
+            raise HTTPException(status_code=500, detail="Failed to extract text or empty file")
         return {"text": text, "filename": file.filename}
     except Exception as e:
         if os.path.exists(temp_path): os.remove(temp_path)
@@ -66,12 +70,8 @@ async def api_extract_text(file: UploadFile = File(...)):
 @app.post("/api/summarize")
 async def summarize(request: TextRequest):
     try:
-        prompt = """
-        Summarize the following text professionally. 
-        Use clear headings, bullet points, and bold key terms.
-        Focus on the most important concepts.
-        """
-        summary = get_gemini_text(request.text, prompt)
+        instruction = "Summarize the following text professionally. Use clear headings, bullet points, and bold key terms."
+        summary = get_gemini_text(request.text, instruction)
         return {"summary": summary}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -79,13 +79,8 @@ async def summarize(request: TextRequest):
 @app.post("/api/mcq")
 async def generate_mcqs(request: TextRequest):
     try:
-        prompt = """
-        Generate 10 multiple choice questions from this text.
-        Return ONLY a JSON list of objects with this format:
-        [{"question": "...", "options": ["...", "...", "..."], "answer": 0}]
-        Where 'answer' is the index of the correct option.
-        """
-        mcqs = get_gemini_json(request.text, prompt)
+        instruction = "Generate 10 multiple choice questions. Return ONLY a JSON list: [{\"question\": \"...\", \"options\": [\"...\", \"...\", \"...\"], \"answer\": 0}]"
+        mcqs = get_gemini_json(request.text, instruction)
         return {"mcqs": mcqs}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -93,12 +88,8 @@ async def generate_mcqs(request: TextRequest):
 @app.post("/api/flashcards")
 async def generate_flashcards(request: TextRequest):
     try:
-        prompt = """
-        Generate 10 flashcards from this text.
-        Return ONLY a JSON list of objects:
-        [{"front": "...", "back": "..."}]
-        """
-        flashcards = get_gemini_json(request.text, prompt)
+        instruction = "Generate 10 flashcards. Return ONLY a JSON list: [{\"front\": \"...\", \"back\": \"...\"}]"
+        flashcards = get_gemini_json(request.text, instruction)
         return {"flashcards": flashcards}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -106,7 +97,7 @@ async def generate_flashcards(request: TextRequest):
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     try:
-        instruction = f"User Query: {request.query}\nAnswer based on the document provided."
+        instruction = f"User Question: {request.query}\nAnswer based contextually on the provided text."
         response = get_gemini_text(request.text, instruction)
         return {"answer": response}
     except Exception as e:
