@@ -35,6 +35,10 @@ class ChatRequest(BaseModel):
     query: str
     history: List[dict] = []
 
+@app.get("/")
+async def root():
+    return {"message": "AI Student Assistant API is running", "docs": "/docs"}
+
 @app.get("/api/health")
 async def health():
     return {"status": "healthy", "api_key_configured": bool(os.environ.get("GOOGLE_API_KEY"))}
