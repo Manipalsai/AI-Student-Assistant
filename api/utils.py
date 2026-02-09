@@ -21,23 +21,30 @@ else:
 
 def get_working_model():
     """
-    Dynamically finds the best available flash model to avoid 404/Quota issues.
+    Finds the best available model with the highest quota.
+    Prioritizes 1.5-flash (1500 RPD) over experimental models.
     """
     try:
-        # Get list of models
         available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         
-        # Priority order
-        priorities = ["models/gemini-1.5-flash-latest", "models/gemini-1.5-flash", "models/gemini-pro"]
+        # Priority: standard 1.5 flash has the best free tier limits (15 RPM, 1500 RPD)
+        # We avoid "latest" or experimental models which often have tighter limits.
+        priorities = ["models/gemini-1.5-flash", "models/gemini-1.5-flash-latest", "models/gemini-pro"]
         
         for p in priorities:
             if p in available:
+                print(f"Selecting model: {p}")
                 return genai.GenerativeModel(p)
         
-        # Last resort: take the first available one
+        # If none of our priorities are available, fall back to anything supporting generation
+        # but try to avoid newer/experimental ones if possible
+        for m in available:
+            if "flash" in m and "2.0" not in m and "2.5" not in m:
+                return genai.GenerativeModel(m)
+                
         return genai.GenerativeModel(available[0])
     except Exception as e:
-        print(f"Error listing models: {e}. Using hard fallback.")
+        print(f"Model resolution error: {e}")
         return genai.GenerativeModel("gemini-1.5-flash")
 
 def get_model():
