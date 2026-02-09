@@ -19,12 +19,29 @@ if not GOOGLE_API_KEY:
 else:
     genai.configure(api_key=GOOGLE_API_KEY)
 
+def get_working_model():
+    """
+    Dynamically finds the best available flash model to avoid 404/Quota issues.
+    """
+    try:
+        # Get list of models
+        available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        
+        # Priority order
+        priorities = ["models/gemini-1.5-flash-latest", "models/gemini-1.5-flash", "models/gemini-pro"]
+        
+        for p in priorities:
+            if p in available:
+                return genai.GenerativeModel(p)
+        
+        # Last resort: take the first available one
+        return genai.GenerativeModel(available[0])
+    except Exception as e:
+        print(f"Error listing models: {e}. Using hard fallback.")
+        return genai.GenerativeModel("gemini-1.5-flash")
+
 def get_model():
-    """
-    Returns the Gemini 1.5 Flash model, which has the best 
-    quotas for free tier users.
-    """
-    return genai.GenerativeModel("gemini-1.5-flash")
+    return get_working_model()
 
 def extract_text(file_path: str) -> str:
     if not os.path.exists(file_path): return ""
