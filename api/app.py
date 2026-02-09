@@ -6,6 +6,10 @@ import os
 import shutil
 import uuid
 import tempfile
+from dotenv import load_dotenv
+
+# Load local .env file if it exists
+load_dotenv()
 
 # Import utilities
 from utils import extract_text, get_gemini_text, get_gemini_json
