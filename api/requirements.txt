@@ -1,11 +1,5 @@
 fastapi
-uvicorn
 python-multipart
 google-generativeai
-reportlab
-fpdf
-PyPDF2
+pypdf
 python-docx
-markdown
-pymupdf
-gunicorn

@@ -2,11 +2,10 @@ import google.generativeai as genai
 import os
 import json
 import typing
-import fitz # PyMuPDF
-from docx import Document
-import markdown
 import time
 import random
+import pypdf
+from docx import Document
 
 # Initialize Gemini Model
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
@@ -67,6 +66,8 @@ def get_model():
     
     return genai.GenerativeModel(CACHED_MODEL_NAME)
 
+
+
 def extract_text(file_path: str) -> str:
     """
     Extracts text from PDF, DOCX, TXT, MD files.
@@ -77,21 +78,21 @@ def extract_text(file_path: str) -> str:
         
     ext = os.path.splitext(file_path)[1].lower()
     try:
-        if ext == ".txt":
+        if ext == ".txt" or ext == ".md":
             with open(file_path, "r", encoding="utf-8") as f:
                 return f.read()
         elif ext == ".pdf":
             text = ""
-            with fitz.open(file_path) as doc:
-                for page in doc:
-                    text += page.get_text()
+            with open(file_path, "rb") as f:
+                reader = pypdf.PdfReader(f)
+                for page in reader.pages:
+                    content = page.extract_text()
+                    if content:
+                        text += content + "\n"
             return text
         elif ext == ".docx":
             doc = Document(file_path)
             return "\n".join([para.text for para in doc.paragraphs])
-        elif ext == ".md":
-            with open(file_path, "r", encoding="utf-8") as f:
-                return markdown.markdown(f.read())
         else:
             print(f"Unsupported file format: {ext}")
             return ""
