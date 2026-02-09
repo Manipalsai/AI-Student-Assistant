@@ -15,35 +15,16 @@ load_dotenv()
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 
 if not GOOGLE_API_KEY:
-    print("CRITICAL WARNING: GOOGLE_API_KEY not found.")
-
-if GOOGLE_API_KEY:
+    print("CRITICAL WARNING: GOOGLE_API_KEY not found. API requests will fail.")
+else:
     genai.configure(api_key=GOOGLE_API_KEY)
 
-def get_working_model_name():
-    try:
-        models = genai.list_models()
-        model_names = [m.name for m in models if 'generateContent' in m.supported_generation_methods]
-        
-        # 1. Prefer 1.5 Flash (Fast & reliable)
-        for name in model_names:
-            if "gemini-1.5-flash" in name: return name
-            
-        # 2. Fallback to Pro
-        for name in model_names:
-            if "gemini-pro" in name: return name
-            
-        return model_names[0]
-    except Exception:
-        return "gemini-1.5-flash" # Hard fallback
-
-CACHED_MODEL_NAME = None
-
 def get_model():
-    global CACHED_MODEL_NAME
-    if not CACHED_MODEL_NAME:
-        CACHED_MODEL_NAME = get_working_model_name()
-    return genai.GenerativeModel(CACHED_MODEL_NAME)
+    """
+    Returns the Gemini 1.5 Flash model, which has the best 
+    quotas for free tier users.
+    """
+    return genai.GenerativeModel("gemini-1.5-flash")
 
 def extract_text(file_path: str) -> str:
     if not os.path.exists(file_path): return ""
