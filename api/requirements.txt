@@ -4,6 +4,8 @@ python-multipart
 google-generativeai
 reportlab
 fpdf
-pypdf2
+PyPDF2
 python-docx
 markdown
+pymupdf
+gunicorn

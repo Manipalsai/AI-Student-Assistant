@@ -1,31 +1,22 @@
-/* Global Reset & Base Styles */
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background-color: #b71c1c;
-  color: #f1f1f1; 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-950 text-gray-100 font-sans antialiased;
+  }
 }
 
-.app-container {
-  text-align: center;
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
-/* 🧱 Component Layout */
-.content {
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  align-items: center;
+.perspective-1000 {
+  perspective: 1000px;
 }
 
-/* 📦 Component Cards (Summary, MCQ, Quiz) */
-.content > * {
-  background: #fff8e1;
-  color: #000;
-  padding: 1.5rem;
-  border-radius: 10px;
-  width: 80%;
-  max-width: 700px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+.preserve-3d {
+  transform-style: preserve-3d;
 }

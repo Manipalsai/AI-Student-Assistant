@@ -1,24 +1,32 @@
-import React from 'react';
-import './App.css';
 
-import SummaryGenerator from './components/SummaryGenerator';
-import McqGenerator from './components/McqGenerator';
-import Quiz from './components/Quiz';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Home from './pages/Home';
+import DashboardLayout from './layouts/DashboardLayout';
+import Summarize from './pages/dashboard/Summarize';
+import Flashcards from './pages/dashboard/Flashcards';
+import Quiz from './pages/dashboard/Quiz';
+import Chat from './pages/dashboard/Chat';
+import { StudyProvider } from './context/StudyContext';
+import { Toaster } from 'react-hot-toast';
 
 function App() {
   return (
-    <div className="app-container">
-      {/* 🌟 Custom heading */}
-      <header style={{ textAlign: 'center', padding: '20px 0', fontSize: '3rem', fontWeight: 'bold' }}>
-        AI Study Assistant
-      </header>
+    <StudyProvider>
+      <Toaster position="top-right" />
+      <Routes>
+        <Route path="/" element={<Home />} />
 
-      <div className="content">
-        <SummaryGenerator />
-        <McqGenerator />
-        <Quiz />
-      </div>
-    </div>
+        <Route path="/app" element={<DashboardLayout />}>
+          <Route index element={<Navigate to="summary" replace />} />
+          <Route path="summary" element={<Summarize />} />
+          <Route path="flashcards" element={<Flashcards />} />
+          <Route path="quiz" element={<Quiz />} />
+          <Route path="chat" element={<Chat />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </StudyProvider>
   );
 }
 
