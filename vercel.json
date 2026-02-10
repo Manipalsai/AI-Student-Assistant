@@ -19,11 +19,17 @@
       "dest": "api/app.py"
     },
     {
-      "handle": "filesystem"
+      "src": "/assets/(.*)",
+      "dest": "/Frontend/assets/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/Frontend/$1",
+      "check": true
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/Frontend/index.html"
     }
   ]
 }
