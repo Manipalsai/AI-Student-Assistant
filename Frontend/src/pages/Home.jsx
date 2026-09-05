@@ -1,192 +1,117 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, BrainCircuit, Zap, FileText, CheckCircle, MessageSquare, X, HelpCircle, Upload, Search, BookOpen } from 'lucide-react';
+import { BrainCircuit, BookOpen, MessageSquare, Layers, Sparkles, ArrowRight, ShieldCheck, BarChart3, Calendar } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-export default function Home() {
-    const [isGuideOpen, setIsGuideOpen] = useState(false);
-
+const Home = () => {
     return (
-        <div className="min-h-screen bg-gray-950 text-white font-sans selection:bg-blue-500 selection:text-white overflow-x-hidden">
+        <div className="min-h-screen bg-gray-950 text-white font-sans selection:bg-blue-600 selection:text-white relative overflow-hidden">
+            {/* Background glowing gradients */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-tr from-blue-600/20 to-purple-600/20 blur-[120px] pointer-events-none rounded-full" />
+
             {/* Navbar */}
-            <nav className="container mx-auto px-6 py-6 flex justify-between items-center relative z-20">
-                <div className="flex items-center gap-2 font-bold text-2xl tracking-tighter">
-                    <BrainCircuit className="text-blue-500" />
-                    <span>AI Study Mate</span>
+            <nav className="max-w-7xl mx-auto px-6 py-6 flex justify-between items-center relative z-10 border-b border-gray-800/60">
+                <div className="flex items-center gap-3 font-extrabold text-xl text-white">
+                    <div className="p-2.5 bg-blue-600/20 border border-blue-500/40 rounded-xl text-blue-400">
+                        <BrainCircuit size={26} />
+                    </div>
+                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400">
+                        AI Student Assistant
+                    </span>
                 </div>
-                <div className="flex gap-8 text-sm font-medium text-gray-400 items-center">
-                    <a href="#features" className="hover:text-white transition-colors hidden md:block">Features</a>
-                    <button
-                        onClick={() => setIsGuideOpen(true)}
-                        className="hover:text-white transition-colors flex items-center gap-1.5"
+
+                <div className="flex items-center gap-4">
+                    <Link
+                        to="/app/documents"
+                        className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-blue-950/50 transition flex items-center gap-2"
                     >
-                        How it Works
-                    </button>
+                        Start Learning Platform <ArrowRight size={16} />
+                    </Link>
                 </div>
             </nav>
 
-            {/* Hero */}
-            <header className="container mx-auto px-6 pt-20 pb-32 text-center relative z-10">
+            {/* Hero Section */}
+            <section className="max-w-5xl mx-auto px-6 pt-20 pb-16 text-center space-y-8 relative z-10">
                 <motion.div
-                    initial={{ opacity: 0, y: 30 }}
+                    initial={{ opacity: 0, y: 15 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8 }}
+                    className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-950/80 border border-blue-800/80 text-blue-300 text-xs font-semibold"
                 >
-                    <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-tight">
-                        Master your studies with <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600">Artificial Intelligence</span>
-                    </h1>
-                    <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-12 leading-relaxed">
-                        Upload any document and instantly generate summaries, flashcards, and quizzes.
-                        Your personal AI tutor is here.
-                    </p>
-                    <div className="flex justify-center gap-4">
-                        <Link to="/app/summary" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-full font-bold text-lg transition-all shadow-lg shadow-blue-900/50 flex items-center gap-2 group">
-                            Get Started
-                            <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-                        </Link>
-                    </div>
+                    <ShieldCheck size={14} className="text-blue-400" />
+                    Production-Grade Grounded RAG Platform v2.0
                 </motion.div>
 
-                {/* Abstract Background Elements */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-600/20 rounded-full blur-[120px] -z-10 pointer-events-none" />
-                <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-purple-600/10 rounded-full blur-[100px] -z-10 pointer-events-none" />
-            </header>
+                <motion.h1
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="text-4xl sm:text-6xl font-black tracking-tight leading-tight bg-clip-text text-transparent bg-gradient-to-b from-white via-gray-100 to-gray-400"
+                >
+                    Master Course Material with <br />
+                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">
+                        Grounded RAG Intelligence
+                    </span>
+                </motion.h1>
 
-            {/* Features */}
-            <section id="features" className="bg-gray-900/50 py-24 border-t border-gray-800">
-                <div className="container mx-auto px-6 text-center mb-16">
-                    <h2 className="text-3xl font-bold mb-4">Powerful Study Tools</h2>
-                    <p className="text-gray-400">Everything you need to ace your exams in one place.</p>
-                </div>
-                <div className="container mx-auto px-6">
-                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-                        <FeatureCard
-                            icon={<FileText size={32} className="text-blue-400" />}
-                            title="Instant Summaries"
-                            desc="Turn textbooks into concise, structured notes in seconds."
-                        />
-                        <FeatureCard
-                            icon={<Zap size={32} className="text-yellow-400" />}
-                            title="Smart Flashcards"
-                            desc="Memorize key concepts faster with AI-generated cards."
-                        />
-                        <FeatureCard
-                            icon={<CheckCircle size={32} className="text-green-400" />}
-                            title="Interactive Quizzes"
-                            desc="Test your knowledge with auto-generated questions."
-                        />
-                        <FeatureCard
-                            icon={<MessageSquare size={32} className="text-purple-400" />}
-                            title="AI Document Chat"
-                            desc="Ask questions and chat directly with your PDF documents."
-                        />
+                <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-base sm:text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed"
+                >
+                    Upload course notes, textbook PDFs, and research papers. Chat conversationally with page citations, track topic mastery, attempt adaptive quizzes, and follow AI exam study plans.
+                </motion.p>
+
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.3 }}
+                    className="pt-4 flex flex-col sm:flex-row gap-4 justify-center"
+                >
+                    <Link
+                        to="/app/documents"
+                        className="px-8 py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:opacity-95 text-white rounded-2xl font-extrabold text-sm shadow-xl shadow-blue-950/60 transition flex items-center justify-center gap-2"
+                    >
+                        <Sparkles size={18} /> Start Learning Now
+                    </Link>
+                </motion.div>
+            </section>
+
+            {/* Feature Cards Grid */}
+            <section className="max-w-6xl mx-auto px-6 py-16 relative z-10">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="p-8 bg-gray-900/80 border border-gray-800 hover:border-blue-500/50 rounded-2xl space-y-4 shadow-xl transition">
+                        <div className="w-12 h-12 rounded-xl bg-blue-600/20 border border-blue-500/40 text-blue-400 flex items-center justify-center">
+                            <MessageSquare size={24} />
+                        </div>
+                        <h3 className="text-lg font-bold text-white">Grounded RAG Chat</h3>
+                        <p className="text-xs text-gray-400 leading-relaxed">
+                            Retrieve verified answers grounded strictly in your uploaded text with exact page citations and clickable snippet modal inspection.
+                        </p>
+                    </div>
+
+                    <div className="p-8 bg-gray-900/80 border border-gray-800 hover:border-purple-500/50 rounded-2xl space-y-4 shadow-xl transition">
+                        <div className="w-12 h-12 rounded-xl bg-purple-600/20 border border-purple-500/40 text-purple-400 flex items-center justify-center">
+                            <BarChart3 size={24} />
+                        </div>
+                        <h3 className="text-lg font-bold text-white">Adaptive Quizzes & Mastery</h3>
+                        <p className="text-xs text-gray-400 leading-relaxed">
+                            Track quiz scores, identify weak topics (&lt;65%), and generate targeted practice questions with full rationale explanations.
+                        </p>
+                    </div>
+
+                    <div className="p-8 bg-gray-900/80 border border-gray-800 hover:border-indigo-500/50 rounded-2xl space-y-4 shadow-xl transition">
+                        <div className="w-12 h-12 rounded-xl bg-indigo-600/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center">
+                            <Calendar size={24} />
+                        </div>
+                        <h3 className="text-lg font-bold text-white">AI Study Roadmaps</h3>
+                        <p className="text-xs text-gray-400 leading-relaxed">
+                            Input your exam date and daily study time to generate a step-by-step daily revision roadmap aligned with your syllabus.
+                        </p>
                     </div>
                 </div>
             </section>
-
-            {/* How it Works Modal */}
-            <AnimatePresence>
-                {isGuideOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setIsGuideOpen(false)}
-                            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-                        />
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                            className="bg-gray-900 border border-gray-800 w-full max-w-2xl rounded-3xl overflow-hidden relative z-10 shadow-2xl"
-                        >
-                            <div className="p-8">
-                                <div className="flex justify-between items-center mb-8">
-                                    <div className="flex items-center gap-3">
-                                        <div className="bg-blue-600/20 p-2 rounded-lg">
-                                            <HelpCircle className="text-blue-400" />
-                                        </div>
-                                        <h2 className="text-2xl font-bold">How it Works</h2>
-                                    </div>
-                                    <button
-                                        onClick={() => setIsGuideOpen(false)}
-                                        className="text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-800 transition-colors"
-                                    >
-                                        <X size={24} />
-                                    </button>
-                                </div>
-
-                                <div className="space-y-8">
-                                    <Step
-                                        num="01"
-                                        icon={<Upload className="text-blue-400" size={24} />}
-                                        title="Upload Your Document"
-                                        desc="Drop your PDF, Word, or text file into the assistant. We'll securely extract the content."
-                                    />
-                                    <Step
-                                        num="02"
-                                        icon={<Search className="text-purple-400" size={24} />}
-                                        title="Choose Your Study Tool"
-                                        desc="Pick from Summaries, Flashcards, or Quizzes to process your material."
-                                    />
-                                    <Step
-                                        num="03"
-                                        icon={<BookOpen className="text-green-400" size={24} />}
-                                        title="Master the Content"
-                                        desc="Review your notes, study your cards, or chat with the document for deep insights."
-                                    />
-                                </div>
-
-                                <div className="mt-12">
-                                    <button
-                                        onClick={() => setIsGuideOpen(false)}
-                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-bold transition-all"
-                                    >
-                                        Got it, let's go!
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
-            {/* Footer */}
-            <footer className="container mx-auto px-6 py-12 border-t border-gray-900 text-center">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="flex items-center gap-2 font-bold text-lg text-gray-400">
-                        <BrainCircuit size={20} />
-                        <span>AI Study Mate</span>
-                    </div>
-                    <p className="text-gray-500 text-sm">
-                        &copy; AI Student Assistant
-                    </p>
-                </div>
-            </footer>
         </div>
     );
-}
+};
 
-const FeatureCard = ({ icon, title, desc }) => (
-    <div className="bg-gray-800/30 p-8 rounded-3xl border border-gray-800 hover:border-blue-500/30 transition-all hover:-translate-y-1 duration-300">
-        <div className="mb-6 bg-gray-950 w-16 h-16 rounded-2xl flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
-            {icon}
-        </div>
-        <h3 className="text-xl font-bold mb-3">{title}</h3>
-        <p className="text-gray-400 text-sm leading-relaxed">{desc}</p>
-    </div>
-);
-
-const Step = ({ num, icon, title, desc }) => (
-    <div className="flex gap-6">
-        <div className="flex-shrink-0 text-3xl font-black text-gray-800 select-none">{num}</div>
-        <div className="flex flex-col">
-            <div className="flex items-center gap-2 mb-2">
-                {icon}
-                <h4 className="font-bold text-lg">{title}</h4>
-            </div>
-            <p className="text-gray-400 text-sm leading-relaxed">{desc}</p>
-        </div>
-    </div>
-);
+export default Home;

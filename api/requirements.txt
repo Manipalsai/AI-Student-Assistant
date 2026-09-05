@@ -5,3 +5,8 @@ pypdf
 python-docx
 python-dotenv
 uvicorn
+chromadb
+numpy
+scikit-learn
+pydantic>=2.0.0
+rank-bm25

@@ -1,132 +1,225 @@
 import { useState } from 'react';
 import { useStudy } from '../../context/StudyContext';
-import axios from 'axios';
-import { Layers, RotateCw, ChevronLeft, ChevronRight, UploadCloud } from 'lucide-react';
+import DocumentSelectorDropdown from '../../components/DocumentSelectorDropdown';
+import { Layers, RefreshCw, ChevronLeft, ChevronRight, RotateCw, CheckCircle, Sparkles, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Flashcards = () => {
-    const { text, fileName, flashcards, setFlashcards } = useStudy();
+    const { flashcards, generateFlashcards, loading, difficulty, setDifficulty } = useStudy();
+
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isFlipped, setIsFlipped] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [started, setStarted] = useState(false);
+    const [cardRatings, setCardRatings] = useState({});
 
-    // If flashcards already exist in context, we can skip the generation step
-    useState(() => {
-        if (flashcards && flashcards.length > 0) {
-            setStarted(true);
-        }
-    });
-
-    const generateFlashcards = async () => {
-        if (!text) return;
-        setLoading(true);
-        try {
-            const res = await axios.post('/api/flashcards', { text });
-            if (res.data.flashcards) {
-                setFlashcards(res.data.flashcards);
-                setStarted(true);
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
+    const handleGenerate = (customDifficulty = null) => {
+        setCurrentIndex(0);
+        setIsFlipped(false);
+        setCardRatings({});
+        generateFlashcards(customDifficulty || difficulty);
     };
 
-    const handleNext = () => {
+    const nextCard = () => {
+        if (!flashcards) return;
         setIsFlipped(false);
         setCurrentIndex((prev) => (prev + 1) % flashcards.length);
     };
 
-    const handlePrev = () => {
+    const prevCard = () => {
+        if (!flashcards) return;
         setIsFlipped(false);
         setCurrentIndex((prev) => (prev - 1 + flashcards.length) % flashcards.length);
     };
 
-    if (!text) {
-        return (
-            <div className="flex flex-col items-center justify-start pt-64 text-center p-8">
-                <UploadCloud size={64} className="text-gray-600 mb-4" />
-                <h3 className="text-xl font-bold text-gray-300">No Document Loaded</h3>
-                <p className="text-gray-500 mt-2">Please upload a document to generate flashcards.</p>
-            </div>
-        );
-    }
+    const rateCard = (rating) => {
+        setCardRatings(prev => ({ ...prev, [currentIndex]: rating }));
+        nextCard();
+    };
 
-    if (!started) {
-        return (
-            <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-                <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="bg-gray-800 p-10 rounded-2xl shadow-2xl border border-gray-700 max-w-md w-full"
-                >
-                    <Layers size={64} className="text-blue-500 mx-auto mb-6" />
-                    <h2 className="text-2xl font-bold text-white mb-4">Study with Flashcards</h2>
-                    <p className="text-gray-400 mb-8">Generate flashcards from {fileName} to memorize key concepts effectively.</p>
-
-                    <button
-                        onClick={generateFlashcards}
-                        disabled={loading}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
-                    >
-                        {loading && <RotateCw className="animate-spin" />}
-                        {loading ? "Generating..." : "Generate Flashcards"}
-                    </button>
-                </motion.div>
-            </div>
-        );
-    }
+    const currentCard = flashcards?.[currentIndex];
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-8 pt-12">
-            <div className="flex items-center justify-between w-full max-w-2xl px-4">
-                <h2 className="text-xl font-bold text-gray-300">Card {currentIndex + 1} / {flashcards.length}</h2>
-                <button onClick={() => setStarted(false)} className="text-sm text-blue-400 hover:underline">
-                    Reset
-                </button>
-            </div>
-
-            <div className="relative w-full max-w-2xl aspect-[3/2] cursor-pointer perspective-1000" onClick={() => setIsFlipped(!isFlipped)}>
-                <motion.div
-                    className="w-full h-full relative preserve-3d transition-all duration-500"
-                    animate={{ rotateY: isFlipped ? 180 : 0 }}
-                    transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                    style={{ transformStyle: 'preserve-3d' }}
-                >
-                    {/* Front */}
-                    <div className="absolute w-full h-full backface-hidden bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl shadow-2xl flex flex-col items-center justify-center p-8 border border-blue-500/30">
-                        <p className="text-xs font-bold text-blue-200 uppercase tracking-widest mb-4">Terms</p>
-                        <h3 className="text-3xl font-bold text-white text-center">{flashcards[currentIndex].front}</h3>
-                        <p className="absolute bottom-6 text-sm text-blue-200 opacity-60">Click to flip</p>
+        <div className="p-8 space-y-8 max-w-4xl mx-auto">
+            {/* Header Toolbar */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-900/60 p-6 rounded-2xl border border-gray-800 backdrop-blur">
+                <div className="flex items-center gap-3">
+                    <div className="p-3 bg-blue-600/20 border border-blue-500/40 rounded-xl text-blue-400">
+                        <Layers size={28} />
                     </div>
+                    <div>
+                        <h2 className="text-xl font-bold text-white">Active Recall Flashcards</h2>
+                        <p className="text-xs text-gray-400">
+                            Digital study cards generated directly from your uploaded material for memory retention.
+                        </p>
+                    </div>
+                </div>
 
-                    {/* Back */}
-                    <div
-                        className="absolute w-full h-full backface-hidden bg-gray-800 rounded-2xl shadow-2xl flex flex-col items-center justify-center p-8 border border-gray-700"
-                        style={{ transform: 'rotateY(180deg)' }}
+                <div className="flex flex-wrap items-center gap-3">
+                    <DocumentSelectorDropdown label="Scope:" />
+
+                    <select
+                        value={difficulty}
+                        onChange={(e) => {
+                            setDifficulty(e.target.value);
+                            handleGenerate(e.target.value);
+                        }}
+                        className="bg-gray-950 text-white font-bold text-xs rounded-xl px-3 py-2 border border-gray-800 focus:outline-none"
                     >
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Definition</p>
-                        <p className="text-xl text-gray-200 text-center leading-relaxed">{flashcards[currentIndex].back}</p>
-                    </div>
-                </motion.div>
+                        <option value="Easy">Easy</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Hard">Hard</option>
+                    </select>
+
+                    <button
+                        onClick={() => handleGenerate()}
+                        disabled={loading}
+                        className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold text-xs shadow-lg transition disabled:opacity-50 flex items-center gap-2"
+                    >
+                        {loading ? <RefreshCw size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                        {loading ? 'Generating...' : 'Generate New Deck'}
+                    </button>
+                </div>
             </div>
 
-            <div className="flex items-center gap-6">
-                <button
-                    onClick={(e) => { e.stopPropagation(); handlePrev(); }}
-                    className="p-4 bg-gray-800 hover:bg-gray-700 rounded-full text-white transition-all border border-gray-700 hover:border-gray-500"
-                >
-                    <ChevronLeft size={24} />
-                </button>
-                <button
-                    onClick={(e) => { e.stopPropagation(); handleNext(); }}
-                    className="p-4 bg-blue-600 hover:bg-blue-700 rounded-full text-white transition-all shadow-lg shadow-blue-900/50"
-                >
-                    <ChevronRight size={24} />
-                </button>
+            {/* How Active Recall Flashcards Work */}
+            <div className="p-5 bg-gradient-to-r from-blue-950/40 via-gray-900 to-indigo-950/40 border border-blue-800/50 rounded-2xl space-y-2 text-xs text-gray-300">
+                <div className="flex items-center gap-2 text-blue-400 font-bold text-sm">
+                    <HelpCircle size={18} /> How Active Recall Flashcards Work:
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-gray-300 font-medium">
+                    <div className="p-3 bg-gray-950/80 rounded-xl border border-gray-800">
+                        <strong className="text-white block mb-1">1. Read Question (Front)</strong>
+                        Read the concept on the front side of the card.
+                    </div>
+                    <div className="p-3 bg-gray-950/80 rounded-xl border border-gray-800">
+                        <strong className="text-white block mb-1">2. Flip Card (Back)</strong>
+                        Click the card to reveal the exact unmirrored answer extracted from your document.
+                    </div>
+                    <div className="p-3 bg-gray-950/80 rounded-xl border border-gray-800">
+                        <strong className="text-white block mb-1">3. Rate Recall</strong>
+                        Rate your memory recall (<span className="text-red-400 font-bold">Hard</span>, <span className="text-yellow-400 font-bold">Medium</span>, <span className="text-emerald-400 font-bold">Easy</span>) to strengthen long-term memory.
+                    </div>
+                </div>
             </div>
+
+            {/* Flashcard Area */}
+            {!flashcards || flashcards.length === 0 ? (
+                <div className="text-center py-16 bg-gray-900/40 rounded-2xl border border-gray-800 space-y-4">
+                    <Layers size={48} className="mx-auto text-gray-600" />
+                    <div>
+                        <h3 className="text-lg font-bold text-white">No Flashcard Deck Active</h3>
+                        <p className="text-xs text-gray-400 max-w-sm mx-auto mt-1">
+                            Click 'Generate New Deck' to create active recall flashcards from your uploaded documents.
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => handleGenerate()}
+                        disabled={loading}
+                        className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xs shadow transition"
+                    >
+                        Generate 10 Study Flashcards
+                    </button>
+                </div>
+            ) : (
+                <div className="space-y-6">
+                    {/* Card Counter */}
+                    <div className="flex justify-between items-center text-xs text-gray-400 font-semibold px-2">
+                        <span>Card {currentIndex + 1} of {flashcards.length}</span>
+                        <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-blue-950 text-blue-300 border border-blue-800">
+                            Topic: {currentCard?.topic || 'General Concept'}
+                        </span>
+                    </div>
+
+                    {/* Card Flip Container */}
+                    <div
+                        onClick={() => setIsFlipped(!isFlipped)}
+                        className="relative h-80 w-full cursor-pointer select-none"
+                    >
+                        <AnimatePresence mode="wait">
+                            {!isFlipped ? (
+                                /* FRONT SIDE */
+                                <motion.div
+                                    key="front"
+                                    initial={{ opacity: 0, rotateY: -90 }}
+                                    animate={{ opacity: 1, rotateY: 0 }}
+                                    exit={{ opacity: 0, rotateY: 90 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="w-full h-full bg-gray-900 border border-gray-800 hover:border-blue-500/60 rounded-2xl p-8 flex flex-col justify-between shadow-2xl"
+                                >
+                                    <div className="flex justify-between items-center text-xs font-semibold text-gray-400">
+                                        <span className="px-2 py-0.5 bg-gray-800 text-blue-400 rounded font-bold">FRONT • QUESTION</span>
+                                        <RotateCw size={16} className="text-blue-400" />
+                                    </div>
+                                    <div className="text-center font-bold text-xl md:text-2xl text-white my-auto px-6 leading-relaxed">
+                                        {currentCard?.front}
+                                    </div>
+                                    <div className="text-center text-xs text-blue-400 font-medium">
+                                        Click card to reveal answer 🔄
+                                    </div>
+                                </motion.div>
+                            ) : (
+                                /* BACK SIDE - UNMIRRORED */
+                                <motion.div
+                                    key="back"
+                                    initial={{ opacity: 0, rotateY: 90 }}
+                                    animate={{ opacity: 1, rotateY: 0 }}
+                                    exit={{ opacity: 0, rotateY: -90 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="w-full h-full bg-gradient-to-br from-gray-900 via-gray-900 to-indigo-950 border border-indigo-700/80 rounded-2xl p-8 flex flex-col justify-between shadow-2xl"
+                                >
+                                    <div className="flex justify-between items-center text-xs font-semibold text-indigo-300">
+                                        <span className="px-2 py-0.5 bg-indigo-950 text-emerald-400 border border-indigo-700 rounded font-bold">BACK • ANSWER</span>
+                                        <CheckCircle size={16} className="text-emerald-400" />
+                                    </div>
+                                    <div className="text-center font-medium text-base md:text-lg text-gray-100 leading-relaxed my-auto px-6">
+                                        {currentCard?.back}
+                                    </div>
+                                    <div className="text-center text-xs text-indigo-300 font-medium">
+                                        Rate your memory recall below 👇
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+
+                    {/* Rating buttons */}
+                    <div className="flex justify-center items-center gap-3 pt-2">
+                        <button
+                            onClick={() => rateCard('Hard')}
+                            className="px-4 py-2 bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-300 rounded-xl text-xs font-bold transition"
+                        >
+                            🔴 Hard (Review again)
+                        </button>
+                        <button
+                            onClick={() => rateCard('Medium')}
+                            className="px-4 py-2 bg-amber-950/80 hover:bg-amber-900 border border-amber-800 text-amber-300 rounded-xl text-xs font-bold transition"
+                        >
+                            🟡 Medium (Good)
+                        </button>
+                        <button
+                            onClick={() => rateCard('Easy')}
+                            className="px-4 py-2 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 rounded-xl text-xs font-bold transition"
+                        >
+                            🟢 Easy (Mastered)
+                        </button>
+                    </div>
+
+                    {/* Navigation Controls */}
+                    <div className="flex justify-between items-center pt-4">
+                        <button
+                            onClick={prevCard}
+                            className="p-3 bg-gray-900 hover:bg-gray-800 border border-gray-800 rounded-xl text-gray-300 transition flex items-center gap-1 text-xs font-semibold"
+                        >
+                            <ChevronLeft size={16} /> Previous Card
+                        </button>
+                        <button
+                            onClick={nextCard}
+                            className="p-3 bg-gray-900 hover:bg-gray-800 border border-gray-800 rounded-xl text-gray-300 transition flex items-center gap-1 text-xs font-semibold"
+                        >
+                            Next Card <ChevronRight size={16} />
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
