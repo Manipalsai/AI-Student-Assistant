@@ -6,7 +6,52 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+
+const DEFAULT_SUPPORTED_PROVIDERS = {
+  gemini: {
+    name: 'Google Gemini',
+    description: 'Generous free tier with high RPM (gemini-2.5-flash, gemini-1.5-pro)',
+    example_prefix: 'AIzaSy...',
+    docs_url: 'https://aistudio.google.com/app/apikey',
+    default_model: 'gemini-2.5-flash'
+  },
+  groq: {
+    name: 'Groq Cloud',
+    description: 'Ultra-fast LPU inference (llama-3.3-70b-versatile, mixtral-8x7b)',
+    example_prefix: 'gsk_...',
+    docs_url: 'https://console.groq.com/keys',
+    default_model: 'llama-3.3-70b-versatile'
+  },
+  openai: {
+    name: 'OpenAI',
+    description: 'Standard industry models (gpt-4o-mini, gpt-4o, o1-mini)',
+    example_prefix: 'sk-... or sk-proj-...',
+    docs_url: 'https://platform.openai.com/api-keys',
+    default_model: 'gpt-4o-mini'
+  },
+  openrouter: {
+    name: 'OpenRouter',
+    description: 'Unified API gateway supporting Claude, DeepSeek, Llama & Gemini',
+    example_prefix: 'sk-or-v1-...',
+    docs_url: 'https://openrouter.ai/keys',
+    default_model: 'meta-llama/llama-3.3-70b-instruct'
+  },
+  anthropic: {
+    name: 'Anthropic Claude',
+    description: 'State-of-the-art reasoning (Claude 3.5 Sonnet, Claude 3 Haiku)',
+    example_prefix: 'sk-ant-api03-...',
+    docs_url: 'https://console.anthropic.com/settings/keys',
+    default_model: 'claude-3-5-sonnet-20241022'
+  },
+  custom: {
+    name: 'Custom / Self-Hosted Provider',
+    description: 'Connect any OpenAI-compatible endpoint (DeepSeek, Together AI, Ollama, vLLM)',
+    example_prefix: 'sk-... (or any custom key)',
+    docs_url: 'https://ollama.com',
+    default_model: 'deepseek-chat'
+  }
+};
 
 const PROVIDER_META = {
   gemini: {
@@ -434,10 +479,15 @@ export default function ApiKeysSettings() {
     );
   }
 
-  const providers = status?.supported_providers || {};
+  const providers = (status?.supported_providers && Object.keys(status.supported_providers).length > 0)
+    ? status.supported_providers
+    : DEFAULT_SUPPORTED_PROVIDERS;
   const savedKeys = status?.saved_keys || [];
   const activeMode = status?.active_mode || 'system_default';
   const activeMeta = PROVIDER_META[status?.active_provider] || PROVIDER_META.gemini;
+  const activeProviderName = status?.active_provider_name || 'System Gemini (Pool)';
+  const activeModel = status?.active_model || 'gemini-2.5-flash';
+  const activeKeyMasked = status?.active_key_masked || 'System .env Pool';
 
   return (
     <div style={{
@@ -496,9 +546,9 @@ export default function ApiKeysSettings() {
               : <span style={{ background: 'rgba(59,130,246,0.2)', color: '#60a5fa', fontSize: 10, fontWeight: 700, padding: '2px 10px', borderRadius: 20 }}>SYSTEM POOL</span>}
           </div>
           <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 3 }}>
-            Provider: <strong style={{ color: '#e2e8f0' }}>{status?.active_provider_name}</strong>
-            {' · '}Model: <strong style={{ color: '#e2e8f0' }}>{status?.active_model}</strong>
-            {' · '}Key: <code style={{ color: '#94a3b8', fontFamily: 'monospace' }}>{status?.active_key_masked}</code>
+            Provider: <strong style={{ color: '#e2e8f0' }}>{activeProviderName}</strong>
+            {' · '}Model: <strong style={{ color: '#e2e8f0' }}>{activeModel}</strong>
+            {' · '}Key: <code style={{ color: '#94a3b8', fontFamily: 'monospace' }}>{activeKeyMasked}</code>
           </div>
         </div>
         {activeMode === 'custom' && (

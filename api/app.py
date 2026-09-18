@@ -51,7 +51,19 @@ evaluation_service = EvaluationService(vector_service=vector_service, rag_servic
 
 # In-Memory Document Metadata Registry with persistent disk sync
 documents_registry: Dict[str, Dict[str, Any]] = {}
-DOCS_CACHE_FILE = os.path.join(os.path.dirname(__file__), "data", "documents_cache.json")
+def _get_docs_cache_path() -> str:
+    local_path = os.path.join(os.path.dirname(__file__), "data", "documents_cache.json")
+    try:
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+        test_file = os.path.join(os.path.dirname(local_path), ".perm_test")
+        with open(test_file, "w") as f:
+            f.write("1")
+        os.remove(test_file)
+        return local_path
+    except Exception:
+        return os.path.join(tempfile.gettempdir(), "documents_cache.json")
+
+DOCS_CACHE_FILE = _get_docs_cache_path()
 
 def _save_docs_cache():
     try:

@@ -75,7 +75,20 @@ class LLMProviderService:
     live health checks, and fallback to system defaults.
     """
     def __init__(self, storage_path: Optional[str] = None):
-        self.storage_path = storage_path or os.path.join(os.path.dirname(os.path.dirname(__file__)), "custom_keys.json")
+        if not storage_path:
+            default_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "custom_keys.json")
+            try:
+                test_dir = os.path.dirname(default_path)
+                test_file = os.path.join(test_dir, ".perm_test")
+                with open(test_file, "w") as f:
+                    f.write("1")
+                os.remove(test_file)
+                self.storage_path = default_path
+            except Exception:
+                self.storage_path = os.path.join(tempfile.gettempdir(), "custom_keys.json")
+        else:
+            self.storage_path = storage_path
+
         self.keys_registry: Dict[str, Dict[str, Any]] = {}
         self.active_key_id: Optional[str] = None
         self._load_storage()
