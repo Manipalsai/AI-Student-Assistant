@@ -8,6 +8,7 @@ import Quiz from './pages/dashboard/Quiz';
 import Chat from './pages/dashboard/Chat';
 import StudyPlan from './pages/dashboard/StudyPlan';
 import AnalyticsDashboard from './pages/dashboard/AnalyticsDashboard';
+import ApiKeysSettings from './pages/dashboard/ApiKeysSettings';
 import { StudyProvider } from './context/StudyContext';
 import { Toaster } from 'react-hot-toast';
 
@@ -53,6 +54,7 @@ function App() {
           <Route path="flashcards" element={<Flashcards />} />
           <Route path="study-plan" element={<StudyPlan />} />
           <Route path="analytics" element={<AnalyticsDashboard />} />
+          <Route path="api-keys" element={<ApiKeysSettings />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

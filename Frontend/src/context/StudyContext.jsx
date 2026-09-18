@@ -231,7 +231,7 @@ export const StudyProvider = ({ children }) => {
 
     return (
         <StudyContext.Provider value={{
-            documents, selectedDocumentIds, loading, uploading,
+            documents, selectedDocumentIds, setSelectedDocumentIds, loading, uploading,
             uploadDocument, deleteDocument, toggleDocumentSelection, selectAllDocuments,
             summary, setSummary, generateSummary,
             quiz, setQuiz, generateQuiz, submitQuizAttempt,

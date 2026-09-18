@@ -22,10 +22,31 @@ const Summarize = () => {
                 format: 'a4'
             });
 
+            // Clean string to strictly printable ASCII (32-126) so jsPDF never renders garbled characters
+            const cleanForPDF = (str) => {
+                if (!str) return '';
+                return str
+                    .replace(/[“”]/g, '"')
+                    .replace(/[‘’]/g, "'")
+                    .replace(/[—–]/g, '-')
+                    .replace(/[•·]/g, '-')
+                    .replace(/[^\x20-\x7E]/g, ' ') // Strip emojis and non-ASCII chars
+                    .replace(/\s+/g, ' ')
+                    .trim();
+            };
+
             const pageWidth = doc.internal.pageSize.getWidth();
             const pageHeight = doc.internal.pageSize.getHeight();
             const margin = 16;
             const maxLineWidth = pageWidth - (margin * 2);
+
+            // Build filename keeping original document name + _summarized.pdf
+            const selectedDoc = documents.find(d => selectedDocumentIds.includes(d.id));
+            let exportFilename = 'Study_Summary_summarized.pdf';
+            if (selectedDoc && selectedDoc.filename) {
+                const baseName = selectedDoc.filename.replace(/\.[^/.]+$/, '');
+                exportFilename = `${baseName}_summarized.pdf`;
+            }
 
             // Title Banner
             doc.setFillColor(15, 23, 42);
@@ -33,14 +54,14 @@ const Summarize = () => {
 
             doc.setTextColor(255, 255, 255);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(16);
-            doc.text("AI Student Assistant — Master Study Summary", margin, 14);
+            doc.setFontSize(14);
+            doc.text('AI Student Assistant - Master Study Summary', margin, 13);
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(9);
             doc.setTextColor(148, 163, 184);
             const docNames = documents.filter(d => selectedDocumentIds.includes(d.id)).map(d => d.filename).join(', ') || 'Selected Documents';
-            doc.text(`Document Scope: ${docNames} | Date: ${new Date().toLocaleDateString()}`, margin, 22);
+            doc.text(`Source: ${cleanForPDF(docNames)} | Date: ${new Date().toLocaleDateString()}`, margin, 22);
 
             let cursorY = 36;
 
@@ -49,27 +70,31 @@ const Summarize = () => {
             rawLines.forEach((line) => {
                 const trimmed = line.trim();
                 if (!trimmed) {
-                    cursorY += 4;
+                    cursorY += 3;
                     return;
                 }
 
-                if (trimmed.startsWith('#') || trimmed.startsWith('📌') || trimmed.startsWith('💡') || trimmed.startsWith('📐') || trimmed.startsWith('🎯')) {
-                    if (cursorY > pageHeight - 25) {
+                // Detect markdown headers: ## or ### lines
+                const isH2 = /^##\s/.test(trimmed);
+                const isH3 = /^###\s/.test(trimmed);
+
+                if (isH2 || isH3) {
+                    if (cursorY > pageHeight - 30) {
                         doc.addPage();
                         cursorY = 20;
                     }
 
-                    cursorY += 4;
-                    doc.setFillColor(241, 245, 249);
-                    doc.rect(margin, cursorY - 5, maxLineWidth, 8, 'F');
+                    cursorY += 5;
+                    doc.setFillColor(235, 240, 255);
+                    doc.rect(margin, cursorY - 5, maxLineWidth, 9, 'F');
 
                     doc.setFont('helvetica', 'bold');
-                    doc.setFontSize(11);
+                    doc.setFontSize(isH2 ? 11 : 10);
                     doc.setTextColor(30, 58, 138);
-                    
-                    const headerText = trimmed.replace(/^#+\s*/, '').replace(/[\*\_\`]/g, '');
+
+                    const headerText = cleanForPDF(trimmed.replace(/^#+\s*/, '').replace(/[\*\_\`]/g, ''));
                     doc.text(headerText, margin + 3, cursorY);
-                    cursorY += 9;
+                    cursorY += 10;
                 } else {
                     if (cursorY > pageHeight - 20) {
                         doc.addPage();
@@ -80,9 +105,10 @@ const Summarize = () => {
                     doc.setFontSize(9.5);
                     doc.setTextColor(51, 65, 85);
 
-                    const cleanLine = trimmed.replace(/[\*\_\`]/g, '');
-                    const wrappedLines = doc.splitTextToSize(cleanLine, maxLineWidth);
+                    const cleanLine = cleanForPDF(trimmed.replace(/[\*\_\`]/g, '').replace(/^\*\s+/, '- ').replace(/^[-•]\s+/, '- '));
+                    if (!cleanLine) return;
 
+                    const wrappedLines = doc.splitTextToSize(cleanLine, maxLineWidth);
                     wrappedLines.forEach((wLine) => {
                         if (cursorY > pageHeight - 15) {
                             doc.addPage();
@@ -99,14 +125,14 @@ const Summarize = () => {
                 doc.setPage(i);
                 doc.setFontSize(8);
                 doc.setTextColor(148, 163, 184);
-                doc.text(`Page ${i} of ${pageCount} — Generated by AI Student Assistant RAG Engine`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+                doc.text(`Page ${i} of ${pageCount} - Generated by AI Student Assistant RAG Engine`, pageWidth / 2, pageHeight - 8, { align: 'center' });
             }
 
-            doc.save("Master_Study_Summary.pdf");
-            toast.success("Structured PDF Exported successfully!");
+            doc.save(exportFilename);
+            toast.success(`PDF exported: ${exportFilename}`);
         } catch (err) {
-            console.error("PDF Export error:", err);
-            toast.error("Failed to generate PDF download.");
+            console.error('PDF Export error:', err);
+            toast.error('Failed to generate PDF download.');
         }
     };
 
@@ -174,19 +200,25 @@ const Summarize = () => {
                             remarkPlugins={[remarkGfm]}
                             components={{
                                 h2: ({ node, ...props }) => (
-                                    <h2 className="text-lg font-bold text-blue-400 border-b border-gray-800 pb-2 mt-6 mb-3 flex items-center gap-2" {...props} />
+                                    <h2 className="text-base font-extrabold text-blue-400 border-b border-gray-800/80 pb-2.5 mt-6 mb-3.5 flex items-center gap-2 tracking-wide" {...props} />
                                 ),
                                 h3: ({ node, ...props }) => (
-                                    <h3 className="text-base font-bold text-indigo-300 mt-4 mb-2" {...props} />
+                                    <h3 className="text-sm font-bold text-indigo-300 mt-4 mb-2" {...props} />
+                                ),
+                                p: ({ node, ...props }) => (
+                                    <p className="text-sm text-gray-300 leading-relaxed mb-3 font-normal" {...props} />
                                 ),
                                 ul: ({ node, ...props }) => (
-                                    <ul className="space-y-2.5 my-3 pl-4 list-disc text-gray-300" {...props} />
+                                    <ul className="space-y-2.5 my-3 pl-5 list-disc text-gray-300 text-sm" {...props} />
                                 ),
                                 li: ({ node, ...props }) => (
-                                    <li className="text-xs leading-relaxed text-gray-200 font-medium" {...props} />
+                                    <li className="text-sm leading-relaxed text-gray-300 font-normal pl-1" {...props} />
                                 ),
                                 strong: ({ node, ...props }) => (
-                                    <strong className="text-white font-bold bg-gray-950 px-1.5 py-0.5 rounded border border-gray-800" {...props} />
+                                    <strong className="text-white font-bold bg-gray-950/80 px-1.5 py-0.5 rounded border border-gray-800 text-xs" {...props} />
+                                ),
+                                code: ({ node, ...props }) => (
+                                    <code className="bg-gray-950 text-blue-300 px-1.5 py-0.5 rounded font-mono text-xs border border-gray-800" {...props} />
                                 )
                             }}
                         >

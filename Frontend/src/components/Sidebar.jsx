@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { BookOpen, BrainCircuit, MessageSquare, Layers, Library, BarChart3, Calendar, ShieldCheck } from 'lucide-react';
+import { BookOpen, BrainCircuit, MessageSquare, Layers, Library, BarChart3, Calendar, ShieldCheck, KeyRound } from 'lucide-react';
 
 const Sidebar = () => {
     const location = useLocation();
@@ -14,6 +14,7 @@ const Sidebar = () => {
         { name: 'Flashcards', path: '/app/flashcards', icon: <Layers size={18} /> },
         { name: 'AI Study Plan', path: '/app/study-plan', icon: <Calendar size={18} /> },
         { name: 'Analytics & Mastery', path: '/app/analytics', icon: <BarChart3 size={18} /> },
+        { name: 'API Key Manager', path: '/app/api-keys', icon: <KeyRound size={18} /> },
     ];
 
     return (

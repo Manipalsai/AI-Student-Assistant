@@ -135,23 +135,18 @@ const Chat = () => {
                                         {/* Markdown text */}
                                         <div className="prose prose-invert prose-sm max-w-none text-gray-200 leading-relaxed font-sans">
                                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                {msg.ai}
+                                                {(msg.ai || '')
+                                                    .replace(/#*\s*Key Information from Your Documents:?/gi, '')
+                                                    .replace(/\*{0,2}From\s+[^:\n]+\s*\(Page\s*\d+\):?\*{0,2}/gi, '')
+                                                    .replace(/\s*\[Source[s]?\s*#[^\]]+\]/gi, '')
+                                                    .replace(/\s*\[Source[s]?\s*:[^\]]+\]/gi, '')
+                                                    .replace(/\s*\[Doc[^\]]+\]/gi, '')
+                                                    .replace(/\s*📌\s*\(p\.\s*\d+\)/gi, '')
+                                                    .replace(/\s*\(p\.\s*\d+\)/gi, '')
+                                                    .trim()
+                                                }
                                             </ReactMarkdown>
                                         </div>
-
-                                        {/* Grounded Citations Bar */}
-                                        {msg.citations && msg.citations.length > 0 && (
-                                            <div className="pt-3 border-t border-gray-800 space-y-2">
-                                                <div className="text-[11px] font-semibold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
-                                                    <Sparkles size={12} /> Verified Grounded Citations:
-                                                </div>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {msg.citations.map((cit, cIdx) => (
-                                                        <CitationBadge key={cIdx} citation={cit} />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
 
                                         {!msg.grounded && (
                                             <div className="flex items-center gap-1.5 text-xs text-amber-400 font-medium pt-2 border-t border-gray-800">

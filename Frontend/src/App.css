@@ -1,19 +1,7 @@
-/* 🌟 Glossy Red Background & Light Card Theme */
-
+/* Clean neutral theme */
 body {
-  background-color: #b71c1c; /* Glossy Red */
-  color: #f1f1f1;
-  font-family: 'Segoe UI', sans-serif;
   margin: 0;
   padding: 0;
-}
-
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-  background-color: #b71c1c; /* Make sure the root matches */
 }
 
 /* 🧾 Unified card appearance */

@@ -20,23 +20,23 @@ class VectorService:
         self._init_chroma()
 
     def _init_chroma(self):
+        use_chroma = os.environ.get("ENABLE_CHROMADB", "false").lower() == "true"
+        if not use_chroma:
+            self.chroma_client = None
+            self.collection = None
+            return
+
         try:
             import chromadb
             persist_dir = os.path.join(tempfile.gettempdir(), "ai_student_chroma_v3")
             self.chroma_client = chromadb.PersistentClient(path=persist_dir)
-            # Delete old incompatible collections from prior sessions
-            for old_name in ["study_documents", "study_documents_v2"]:
-                try:
-                    self.chroma_client.delete_collection(old_name)
-                except Exception:
-                    pass
             self.collection = self.chroma_client.get_or_create_collection(
                 name="study_documents_v3",
                 metadata={"hnsw:space": "cosine"}
             )
-            print("✅ VectorService: Initialized persistent ChromaDB collection v3.")
+            print("[OK] VectorService: Initialized persistent ChromaDB collection v3.")
         except Exception as e:
-            print(f"⚠️ VectorService: Using high-speed in-memory store: {e}")
+            print(f"[INFO] VectorService: Using high-speed in-memory store: {e}")
             self.chroma_client = None
             self.collection = None
 

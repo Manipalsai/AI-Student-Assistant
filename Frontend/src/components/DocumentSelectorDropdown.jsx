@@ -2,7 +2,7 @@ import { useStudy } from '../context/StudyContext';
 import { FileText, Layers, Check } from 'lucide-react';
 
 const DocumentSelectorDropdown = ({ label = "Active Document Scope:" }) => {
-    const { documents, selectedDocumentIds, toggleDocumentSelection, selectAllDocuments } = useStudy();
+    const { documents, selectedDocumentIds, setSelectedDocumentIds, selectAllDocuments } = useStudy();
 
     if (!documents || documents.length === 0) {
         return (
@@ -20,14 +20,7 @@ const DocumentSelectorDropdown = ({ label = "Active Document Scope:" }) => {
         if (val === "ALL") {
             selectAllDocuments();
         } else {
-            // Select only the chosen single document
-            documents.forEach(d => {
-                if (d.id === val && !selectedDocumentIds.includes(d.id)) {
-                    toggleDocumentSelection(d.id);
-                } else if (d.id !== val && selectedDocumentIds.includes(d.id)) {
-                    toggleDocumentSelection(d.id);
-                }
-            });
+            setSelectedDocumentIds([val]);
         }
     };
 

@@ -129,56 +129,85 @@ const Flashcards = () => {
                         </span>
                     </div>
 
+                    {/* Explanatory Banner */}
+                    <div className="bg-blue-950/30 border border-blue-800/50 rounded-xl p-3 flex items-center gap-3 text-xs text-blue-300">
+                        <HelpCircle size={18} className="text-blue-400 shrink-0" />
+                        <span>
+                            <strong>Active Recall Technique:</strong> Read the question on the front, recall the answer mentally, then click the card (or the Flip button) to reveal the answer and rate your mastery.
+                        </span>
+                    </div>
+
                     {/* Card Flip Container */}
                     <div
                         onClick={() => setIsFlipped(!isFlipped)}
-                        className="relative h-80 w-full cursor-pointer select-none"
+                        className="relative h-80 w-full cursor-pointer select-none perspective-1000"
+                        title="Click to flip card"
                     >
                         <AnimatePresence mode="wait">
                             {!isFlipped ? (
                                 /* FRONT SIDE */
                                 <motion.div
                                     key="front"
-                                    initial={{ opacity: 0, rotateY: -90 }}
-                                    animate={{ opacity: 1, rotateY: 0 }}
-                                    exit={{ opacity: 0, rotateY: 90 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="w-full h-full bg-gray-900 border border-gray-800 hover:border-blue-500/60 rounded-2xl p-8 flex flex-col justify-between shadow-2xl"
+                                    initial={{ opacity: 0, scale: 0.96 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.96 }}
+                                    transition={{ duration: 0.25 }}
+                                    className="w-full h-full bg-gray-900 border-2 border-gray-800 hover:border-blue-500/80 rounded-2xl p-8 flex flex-col justify-between shadow-2xl transition-colors"
                                 >
                                     <div className="flex justify-between items-center text-xs font-semibold text-gray-400">
-                                        <span className="px-2 py-0.5 bg-gray-800 text-blue-400 rounded font-bold">FRONT • QUESTION</span>
-                                        <RotateCw size={16} className="text-blue-400" />
+                                        <span className="px-2.5 py-1 bg-blue-950/80 border border-blue-700 text-blue-300 rounded-lg font-bold flex items-center gap-1.5">
+                                            <span>❓</span> FRONT • QUESTION
+                                        </span>
+                                        <span className="text-xs text-blue-400 flex items-center gap-1 font-medium bg-gray-800/80 px-2.5 py-1 rounded-lg">
+                                            <RotateCw size={13} /> Click to Flip
+                                        </span>
                                     </div>
                                     <div className="text-center font-bold text-xl md:text-2xl text-white my-auto px-6 leading-relaxed">
-                                        {currentCard?.front}
+                                        {currentCard?.front || currentCard?.question || currentCard?.term || "Concept Question"}
                                     </div>
                                     <div className="text-center text-xs text-blue-400 font-medium">
-                                        Click card to reveal answer 🔄
+                                        Tap anywhere on this card to reveal the answer 🔄
                                     </div>
                                 </motion.div>
                             ) : (
-                                /* BACK SIDE - UNMIRRORED */
+                                /* BACK SIDE */
                                 <motion.div
                                     key="back"
-                                    initial={{ opacity: 0, rotateY: 90 }}
-                                    animate={{ opacity: 1, rotateY: 0 }}
-                                    exit={{ opacity: 0, rotateY: -90 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="w-full h-full bg-gradient-to-br from-gray-900 via-gray-900 to-indigo-950 border border-indigo-700/80 rounded-2xl p-8 flex flex-col justify-between shadow-2xl"
+                                    initial={{ opacity: 0, scale: 0.96 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.96 }}
+                                    transition={{ duration: 0.25 }}
+                                    className="w-full h-full bg-gradient-to-br from-gray-900 via-gray-900 to-indigo-950 border-2 border-emerald-600/80 rounded-2xl p-8 flex flex-col justify-between shadow-2xl"
                                 >
                                     <div className="flex justify-between items-center text-xs font-semibold text-indigo-300">
-                                        <span className="px-2 py-0.5 bg-indigo-950 text-emerald-400 border border-indigo-700 rounded font-bold">BACK • ANSWER</span>
-                                        <CheckCircle size={16} className="text-emerald-400" />
+                                        <span className="px-2.5 py-1 bg-emerald-950/80 border border-emerald-700 text-emerald-300 rounded-lg font-bold flex items-center gap-1.5">
+                                            <CheckCircle size={14} className="text-emerald-400" /> BACK • ANSWER
+                                        </span>
+                                        <span className="text-xs text-indigo-400 flex items-center gap-1 font-medium bg-gray-800/80 px-2.5 py-1 rounded-lg">
+                                            <RotateCw size={13} /> Click to Flip Back
+                                        </span>
                                     </div>
                                     <div className="text-center font-medium text-base md:text-lg text-gray-100 leading-relaxed my-auto px-6">
-                                        {currentCard?.back}
+                                        {currentCard?.back || currentCard?.answer || currentCard?.definition || "Detailed explanation and answer."}
                                     </div>
                                     <div className="text-center text-xs text-indigo-300 font-medium">
-                                        Rate your memory recall below 👇
+                                        Rate your recall retention below to progress 👇
                                     </div>
                                 </motion.div>
                             )}
                         </AnimatePresence>
+                    </div>
+
+                    {/* Quick Flip Button */}
+                    <div className="flex justify-center">
+                        <button
+                            type="button"
+                            onClick={() => setIsFlipped(!isFlipped)}
+                            className="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded-xl text-xs font-semibold transition flex items-center gap-2 border border-gray-700"
+                        >
+                            <RotateCw size={14} className={isFlipped ? "rotate-180 transition-transform" : "transition-transform"} />
+                            {isFlipped ? "Flip to Question" : "Flip to Reveal Answer"}
+                        </button>
                     </div>
 
                     {/* Rating buttons */}

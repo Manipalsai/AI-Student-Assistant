@@ -69,9 +69,11 @@ const StudyPlan = () => {
                         <input
                             type="date"
                             required
+                            min={new Date().toISOString().split('T')[0]}
                             value={examDate}
                             onChange={(e) => setExamDate(e.target.value)}
-                            className="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white focus:border-indigo-500 focus:outline-none color-scheme-dark"
+                            style={{ colorScheme: 'dark' }}
+                            className="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white focus:border-indigo-500 focus:outline-none cursor-pointer"
                         />
                     </div>
 

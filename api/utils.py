@@ -11,29 +11,125 @@ import pypdf
 from docx import Document
 import google.generativeai as genai
 
+import time
+
+try:
+    from services.llm_provider_service import LLMProviderService, SUPPORTED_PROVIDERS
+except ImportError:
+    from .services.llm_provider_service import LLMProviderService, SUPPORTED_PROVIDERS
+
+llm_provider_service = LLMProviderService()
+
 load_dotenv()
 
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
-if GOOGLE_API_KEY:
-    genai.configure(api_key=GOOGLE_API_KEY)
+# --- API Key Pool with Automatic 429 Failover ---
+def _load_api_keys() -> List[str]:
+    raw = os.environ.get("GOOGLE_API_KEYS", "") or os.environ.get("GOOGLE_API_KEY", "")
+    keys = [k.strip() for k in raw.split(",") if k.strip()]
+    return keys
+
+_API_KEYS: List[str] = _load_api_keys()
+_CURRENT_KEY_IDX: int = 0
+_KEY_COOLDOWNS: Dict[str, float] = {}
+
+def get_active_api_key() -> Optional[str]:
+    """Returns the current active, non-cooldown API key from the pool."""
+    global _API_KEYS, _CURRENT_KEY_IDX, _KEY_COOLDOWNS
+    if not _API_KEYS:
+        _API_KEYS = _load_api_keys()
+    if not _API_KEYS:
+        return None
+    
+    now = time.time()
+    for _ in range(len(_API_KEYS)):
+        k = _API_KEYS[_CURRENT_KEY_IDX]
+        if now >= _KEY_COOLDOWNS.get(k, 0):
+            return k
+        _CURRENT_KEY_IDX = (_CURRENT_KEY_IDX + 1) % len(_API_KEYS)
+    return _API_KEYS[_CURRENT_KEY_IDX]
+
+def rotate_api_key(cooldown_seconds: float = 60.0) -> Optional[str]:
+    """Rotates to the next healthy API key in the pool when 429 quota is hit."""
+    global _API_KEYS, _CURRENT_KEY_IDX, _KEY_COOLDOWNS, _TEXT_MODEL
+    if not _API_KEYS:
+        return None
+    exhausted_key = _API_KEYS[_CURRENT_KEY_IDX]
+    _KEY_COOLDOWNS[exhausted_key] = time.time() + cooldown_seconds
+    _CURRENT_KEY_IDX = (_CURRENT_KEY_IDX + 1) % len(_API_KEYS)
+    _TEXT_MODEL = None  # Reset cached model
+    next_key = get_active_api_key()
+    if next_key:
+        try:
+            genai.configure(api_key=next_key)
+            print(f"[API Key Pool] Rotated to next key (ending in ...{next_key[-4:]})")
+        except Exception:
+            pass
+    return next_key
+
+# Initialize primary key
+_init_key = get_active_api_key()
+if _init_key:
+    try:
+        genai.configure(api_key=_init_key)
+    except Exception:
+        pass
 
 # Global Cached Model Singletons for Ultra-Low Latency
 _TEXT_MODEL = None
+_WORKING_MODEL_NAME = None  # Cache the name of the first model that works
+
+# Fast generation config — limits tokens to reduce TTFB latency
+_FAST_GENERATION_CONFIG = {
+    "temperature": 0.2,
+    "max_output_tokens": 800,
+    "top_p": 0.85,
+}
+_RICH_GENERATION_CONFIG = {
+    "temperature": 0.3,
+    "max_output_tokens": 1500,
+    "top_p": 0.9,
+}
+
+# Ordered by verified sub-second speed & free tier quota (gemini-3.1-flash-lite: ~1.5s)
+CANDIDATE_MODELS = [
+    "models/gemini-3.1-flash-lite",
+    "models/gemini-flash-latest",
+    "models/gemini-3.6-flash",
+    "models/gemini-3.5-flash",
+    "models/gemini-flash-lite-latest",
+    "models/gemini-2.5-flash",
+    "gemini-1.5-flash"
+]
 
 def get_gemini_model(model_name: Optional[str] = None):
     """
     Returns cached Gemini model instance for sub-second execution.
-    Uses gemini-1.5-flash as the fastest available model.
     """
-    global _TEXT_MODEL
+    global _TEXT_MODEL, _WORKING_MODEL_NAME
+    curr_key = get_active_api_key()
+    if curr_key:
+        try:
+            genai.configure(api_key=curr_key)
+        except Exception:
+            pass
+
     if model_name:
         return genai.GenerativeModel(model_name)
 
     if _TEXT_MODEL is not None:
         return _TEXT_MODEL
 
-    # Use gemini-1.5-flash as primary (fastest, widely available)
-    _TEXT_MODEL = genai.GenerativeModel("gemini-1.5-flash")
+    for candidate in CANDIDATE_MODELS:
+        try:
+            m = genai.GenerativeModel(candidate)
+            _TEXT_MODEL = m
+            _WORKING_MODEL_NAME = candidate
+            return _TEXT_MODEL
+        except Exception:
+            continue
+
+    _TEXT_MODEL = genai.GenerativeModel("models/gemini-3.6-flash")
+    _WORKING_MODEL_NAME = "models/gemini-3.6-flash"
     return _TEXT_MODEL
 
 
@@ -47,10 +143,12 @@ def get_embedding(text: str) -> List[float]:
 
     text_to_embed = text[:2048]
 
-    if GOOGLE_API_KEY:
-        # Try embedding models in order — use the 768-dim output task type
-        for model_name in ["models/text-embedding-004", "models/embedding-001", "models/gemini-embedding-001"]:
+    active_key = get_active_api_key()
+    if active_key:
+        # Try embedding models in order — models/gemini-embedding-001 is supported
+        for model_name in ["models/gemini-embedding-001", "models/gemini-embedding-2", "models/text-embedding-004"]:
             try:
+                genai.configure(api_key=active_key)
                 res = genai.embed_content(
                     model=model_name,
                     content=text_to_embed,
@@ -64,6 +162,7 @@ def get_embedding(text: str) -> List[float]:
                     return emb
             except Exception:
                 continue
+
 
     # High-speed deterministic hashing vector fallback (<1ms) — always 768 dims
     import hashlib
@@ -138,50 +237,132 @@ def clean_text(text: str) -> str:
     return text.strip()
 
 
-def get_gemini_text(context: str, instruction: str, system_instruction: str = "") -> str:
+def get_gemini_text(context: str, instruction: str, system_instruction: str = "", rich: bool = False) -> str:
     """
-    Fast plain text response from Gemini.
+    Plain text response supporting custom active providers (Groq, OpenAI, Gemini, OpenRouter)
+    with seamless fallback to the cached system Gemini pool.
     """
-    try:
-        model = get_gemini_model()
-        full_prompt = f"CONTEXT / DOCUMENTATION:\n{context}\n\nUSER REQUEST:\n{instruction}"
-        response = model.generate_content(full_prompt)
-        return response.text.strip()
-    except Exception as e:
-        print(f"[get_gemini_text] Error: {e}")
-        return f"Error generating AI response: {str(e)}"
+    global _TEXT_MODEL, _WORKING_MODEL_NAME
+    context_trimmed = context[:35000] if context else ""
+    full_prompt = f"CONTEXT:\n{context_trimmed}\n\nTASK:\n{instruction}"
+    gen_cfg = _RICH_GENERATION_CONFIG if rich else _FAST_GENERATION_CONFIG
+    req_opts = {"timeout": 25.0}
+
+    # 1. Custom Provider Priority: Groq, OpenAI, OpenRouter or Custom Gemini Key
+    if llm_provider_service and llm_provider_service.active_key_id:
+        try:
+            custom_out = llm_provider_service.generate_with_custom(
+                full_prompt,
+                max_tokens=2500 if rich else 1500,
+                temperature=0.3 if rich else 0.2
+            )
+            if custom_out and len(custom_out.strip()) > 5:
+                return custom_out.strip()
+        except Exception as ce:
+            print(f"[get_gemini_text] Custom provider error, falling back to system pool: {ce}")
+
+    # 2. Try cached working system model first
+    if _TEXT_MODEL is not None:
+        try:
+            response = _TEXT_MODEL.generate_content(full_prompt, generation_config=gen_cfg, request_options=req_opts)
+            if response.text and len(response.text.strip()) > 5:
+                return response.text.strip()
+        except Exception:
+            _TEXT_MODEL = None  # Reset on any failure
+
+    # 3. Try system candidate models
+    attempts = 0
+    for model_name in CANDIDATE_MODELS[:3]:
+        try:
+            attempts += 1
+            m = genai.GenerativeModel(model_name)
+            response = m.generate_content(full_prompt, generation_config=gen_cfg, request_options=req_opts)
+            if response.text and len(response.text.strip()) > 5:
+                _TEXT_MODEL = m
+                _WORKING_MODEL_NAME = model_name
+                return response.text.strip()
+        except Exception as e:
+            err_str = str(e)
+            if "429" in err_str or "quota" in err_str.lower():
+                rotate_api_key(cooldown_seconds=60.0)
+                if len(_API_KEYS) <= 1 and attempts >= 2:
+                    break
+            continue
+
+    return "AI model unavailable. Please verify your API key and try again."
 
 
 def get_gemini_json(context: str, instruction: str, system_instruction: str = "") -> typing.Any:
     """
-    Fast structured JSON output from Gemini with robust cleaning.
+    Structured JSON output supporting custom active providers with seamless system fallback.
     """
-    try:
-        model = get_gemini_model()
-        prompt = (
-            f"CONTEXT:\n{context}\n\n"
-            f"TASK:\n{instruction}\n\n"
-            f"CRITICAL: Respond strictly with valid raw JSON. No markdown formatting."
-        )
-        response = model.generate_content(prompt)
-        raw_text = response.text.strip()
-        
-        if raw_text.startswith("```json"):
-            raw_text = raw_text[7:]
-        elif raw_text.startswith("```"):
-            raw_text = raw_text[3:]
-        if raw_text.endswith("```"):
-            raw_text = raw_text[:-3]
+    global _TEXT_MODEL, _WORKING_MODEL_NAME
+    context_trimmed = context[:35000] if context else ""
+    prompt = (
+        f"CONTEXT:\n{context_trimmed}\n\n"
+        f"TASK:\n{instruction}\n\n"
+        f"CRITICAL: Respond strictly with valid raw JSON. No markdown fences."
+    )
+    req_opts = {"timeout": 25.0}
 
-        raw_text = raw_text.strip()
-
+    def _parse_json(raw_text: str):
+        if not raw_text:
+            return None
+        raw = raw_text.strip()
+        if raw.startswith("```json"): raw = raw[7:]
+        elif raw.startswith("```"): raw = raw[3:]
+        if raw.endswith("```"): raw = raw[:-3]
+        raw = raw.strip()
         try:
-            return json.loads(raw_text)
+            return json.loads(raw)
         except json.JSONDecodeError:
-            json_match = re.search(r'(\[.*\]|\{.*\})', raw_text, re.DOTALL)
-            if json_match:
-                return json.loads(json_match.group(1))
-            raise
-    except Exception as e:
-        print(f"[get_gemini_json] JSON error: {e}")
+            m = re.search(r'(\[[\s\S]*\]|\{[\s\S]*\})', raw)
+            if m:
+                try:
+                    return json.loads(m.group(1))
+                except Exception:
+                    pass
         return None
+
+    # 1. Custom Provider Priority
+    if llm_provider_service and llm_provider_service.active_key_id:
+        try:
+            custom_out = llm_provider_service.generate_with_custom(prompt, max_tokens=2500, temperature=0.1)
+            if custom_out:
+                parsed = _parse_json(custom_out)
+                if parsed is not None:
+                    return parsed
+        except Exception as ce:
+            print(f"[get_gemini_json] Custom provider error, falling back to system pool: {ce}")
+
+    # 2. Try cached system model first
+    if _TEXT_MODEL is not None:
+        try:
+            response = _TEXT_MODEL.generate_content(prompt, generation_config=_RICH_GENERATION_CONFIG, request_options=req_opts)
+            result = _parse_json(response.text)
+            if result is not None:
+                return result
+        except Exception:
+            _TEXT_MODEL = None
+
+    # 3. Try system candidate models
+    attempts = 0
+    for model_name in CANDIDATE_MODELS[:3]:
+        try:
+            attempts += 1
+            m = genai.GenerativeModel(model_name)
+            response = m.generate_content(prompt, generation_config=_RICH_GENERATION_CONFIG, request_options=req_opts)
+            result = _parse_json(response.text)
+            if result is not None:
+                _TEXT_MODEL = m
+                _WORKING_MODEL_NAME = model_name
+                return result
+        except Exception as e:
+            err_str = str(e)
+            if "429" in err_str or "quota" in err_str.lower():
+                rotate_api_key(cooldown_seconds=60.0)
+                if len(_API_KEYS) <= 1 and attempts >= 2:
+                    break
+            continue
+
+    return None

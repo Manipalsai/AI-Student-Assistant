@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import os
+import json
 import shutil
 import tempfile
 import uuid
@@ -13,14 +14,14 @@ load_dotenv()
 
 # Import Utilities & RAG Services
 try:
-    from .utils import extract_pages, extract_text, get_gemini_text, get_gemini_json
+    from .utils import extract_pages, extract_text, get_gemini_text, get_gemini_json, llm_provider_service
     from .services.chunking_service import ChunkingService
     from .services.vector_service import VectorService
     from .services.rag_service import RAGService
     from .services.learning_service import LearningService
     from .services.evaluation_service import EvaluationService
 except ImportError:
-    from utils import extract_pages, extract_text, get_gemini_text, get_gemini_json
+    from utils import extract_pages, extract_text, get_gemini_text, get_gemini_json, llm_provider_service
     from services.chunking_service import ChunkingService
     from services.vector_service import VectorService
     from services.rag_service import RAGService
@@ -48,8 +49,43 @@ rag_service = RAGService(vector_service=vector_service)
 learning_service = LearningService()
 evaluation_service = EvaluationService(vector_service=vector_service, rag_service=rag_service)
 
-# In-Memory Document Metadata Registry
+# In-Memory Document Metadata Registry with persistent disk sync
 documents_registry: Dict[str, Dict[str, Any]] = {}
+DOCS_CACHE_FILE = os.path.join(os.path.dirname(__file__), "data", "documents_cache.json")
+
+def _save_docs_cache():
+    try:
+        os.makedirs(os.path.dirname(DOCS_CACHE_FILE), exist_ok=True)
+        with open(DOCS_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(documents_registry, f)
+    except Exception as e:
+        print(f"[WARN] Failed to save documents cache: {e}")
+
+def _load_docs_cache():
+    global documents_registry
+    if os.path.exists(DOCS_CACHE_FILE):
+        try:
+            with open(DOCS_CACHE_FILE, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+                if isinstance(loaded, dict):
+                    documents_registry.update(loaded)
+                    for doc_id, doc in documents_registry.items():
+                        if not any(c.get("document_id") == doc_id for c in vector_service.in_memory_chunks):
+                            txt = doc.get("full_text", "")
+                            if txt:
+                                pages = [{"page_number": 1, "text": txt}]
+                                chunks = chunking_service.create_chunks_from_pages(
+                                    document_id=doc_id,
+                                    document_name=doc.get("filename", "document"),
+                                    pages=pages,
+                                    source_type=doc.get("file_type", "TXT").lower()
+                                )
+                                vector_service.add_chunks(chunks)
+                    print(f"[OK] Restored {len(documents_registry)} documents from persistent disk cache.")
+        except Exception as e:
+            print(f"[WARN] Failed to load documents cache: {e}")
+
+_load_docs_cache()
 
 def get_active_context_text(document_ids: Optional[List[str]] = None, raw_text: Optional[str] = None) -> str:
     """
@@ -58,7 +94,7 @@ def get_active_context_text(document_ids: Optional[List[str]] = None, raw_text: 
     if document_ids and len(document_ids) > 0:
         chunks = [c["text"] for c in vector_service.in_memory_chunks if c["document_id"] in document_ids]
         if chunks:
-            return "\n\n".join(chunks[:25])
+            return "\n\n".join(chunks[:40])
         doc_texts = [documents_registry[d]["full_text"] for d in document_ids if d in documents_registry]
         if doc_texts:
             return "\n\n".join(doc_texts)
@@ -68,7 +104,7 @@ def get_active_context_text(document_ids: Optional[List[str]] = None, raw_text: 
 
     # Fallback to all indexed chunks in vector service
     if vector_service.in_memory_chunks:
-        return "\n\n".join([c["text"] for c in vector_service.in_memory_chunks[:25]])
+        return "\n\n".join([c["text"] for c in vector_service.in_memory_chunks[:40]])
 
     # Fallback to all uploaded documents in registry
     if documents_registry:
@@ -116,6 +152,23 @@ class StudyPlanRequest(BaseModel):
     daily_hours: float = 2.0
     current_level: str = "Intermediate"
     document_ids: Optional[List[str]] = []
+
+class KeyValidationRequest(BaseModel):
+    provider: str
+    api_key: str
+    base_url: Optional[str] = None
+    model: Optional[str] = None
+
+class KeySaveRequest(BaseModel):
+    provider: str
+    api_key: str
+    label: Optional[str] = None
+    base_url: Optional[str] = None
+    model: Optional[str] = None
+    set_active: Optional[bool] = True
+
+class KeySelectRequest(BaseModel):
+    key_id: str  # 'system_default' or custom key id
 
 # --- Routes ---
 
@@ -179,6 +232,7 @@ async def upload_document(file: UploadFile = File(...)):
         }
 
         documents_registry[document_id] = doc_meta
+        _save_docs_cache()
 
         return {
             "document": doc_meta,
@@ -193,6 +247,8 @@ async def upload_document(file: UploadFile = File(...)):
 
 @app.get("/api/documents")
 async def list_documents():
+    if not documents_registry:
+        _load_docs_cache()
     return {
         "documents": list(documents_registry.values())
     }
@@ -203,6 +259,7 @@ async def delete_document(document_id: str):
     if document_id in documents_registry:
         del documents_registry[document_id]
         vector_service.delete_document(document_id)
+        _save_docs_cache()
         return {"message": f"Document {document_id} removed successfully."}
     raise HTTPException(status_code=404, detail="Document not found.")
 
@@ -239,19 +296,27 @@ async def rag_chat(request: ChatRequest):
 @app.post("/api/summarize")
 async def summarize(request: TextRequest):
     try:
-        context_text = get_active_context_text(request.document_ids, request.text)
-        if not context_text:
-            raise HTTPException(status_code=400, detail="Please upload a document to generate a summary.")
+        doc_names = [documents_registry[d]["filename"] for d in (request.document_ids or []) if d in documents_registry]
+        doc_title = ", ".join(doc_names) if doc_names else "Uploaded Study Material"
 
-        instruction = (
-            "Generate a clear, professional Master Study Summary with:\n"
-            "## 📌 Executive Overview\n"
-            "## 💡 Core Concepts & Definitions\n"
-            "## 📐 Important Principles & Formulas\n"
-            "## 🎯 Key Exam & Interview Takeaways"
-        )
-        summary = get_gemini_text(context_text[:35000], instruction)
+        # Gather chunks for selected document(s)
+        chunks = []
+        if request.document_ids and len(request.document_ids) > 0:
+            chunks = [c for c in vector_service.in_memory_chunks if c["document_id"] in request.document_ids]
+        
+        if not chunks and vector_service.in_memory_chunks:
+            chunks = vector_service.in_memory_chunks
+
+        if not chunks:
+            raw_ctx = get_active_context_text(request.document_ids, request.text)
+            if not raw_ctx:
+                raise HTTPException(status_code=400, detail="Please upload a document first to generate a study summary.")
+            chunks = [{"page_number": 1, "text": raw_ctx[:5000], "document_name": doc_title}]
+
+        summary = rag_service.generate_hierarchical_summary(doc_title, chunks)
         return {"summary": summary}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -319,7 +384,7 @@ async def get_analytics():
 async def generate_study_plan(request: StudyPlanRequest):
     try:
         context_text = get_active_context_text(request.document_ids)
-        doc_summary = context_text[:3000] if context_text else f"Study material for {request.subject}"
+        doc_summary = context_text[:35000] if context_text else f"Study material for {request.subject}"
 
         plan = learning_service.generate_study_plan(
             subject=request.subject,
@@ -341,6 +406,76 @@ async def run_evaluation():
         return res
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# --- Custom LLM Provider & Key Management ---
+
+@app.get("/api/keys/status")
+async def get_keys_status():
+    """Returns current active provider, masked key, available providers and saved keys."""
+    return llm_provider_service.get_status()
+
+@app.post("/api/keys/validate")
+async def validate_key_endpoint(req: KeyValidationRequest):
+    """
+    Strict validation endpoint:
+    1. Checks regex format & prefix.
+    2. Executes a real live generation ping to ensure the key is authentic, active, and has text-generation quota.
+    """
+    is_valid, msg, details = llm_provider_service.test_live_key(
+        provider=req.provider,
+        api_key=req.api_key,
+        base_url=req.base_url,
+        model=req.model
+    )
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=msg)
+    return {
+        "valid": True,
+        "message": msg,
+        "details": details
+    }
+
+@app.post("/api/keys/save")
+async def save_key_endpoint(req: KeySaveRequest):
+    """Strictly validates and activates a custom text generation API key."""
+    try:
+        status = llm_provider_service.save_custom_key(
+            provider=req.provider,
+            api_key=req.api_key,
+            label=req.label,
+            base_url=req.base_url,
+            model=req.model,
+            set_active=req.set_active if req.set_active is not None else True
+        )
+        return {
+            "message": f"Successfully validated and activated {req.provider.capitalize()} API key!",
+            "status": status
+        }
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save key: {str(e)}")
+
+@app.post("/api/keys/select")
+async def select_active_key_endpoint(req: KeySelectRequest):
+    """Switches the active LLM provider between custom keys or system_default."""
+    try:
+        status = llm_provider_service.set_active_key(req.key_id)
+        return {
+            "message": f"Active provider set to: {status['active_provider_name']}",
+            "status": status
+        }
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+
+@app.delete("/api/keys/{key_id}")
+async def delete_key_endpoint(key_id: str):
+    """Deletes a custom key and safely resets to system_default or next available key."""
+    status = llm_provider_service.delete_custom_key(key_id)
+    return {
+        "message": f"Key {key_id} deleted.",
+        "status": status
+    }
 
 # --- Legacy Compatibility Route ---
 

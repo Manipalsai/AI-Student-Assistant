@@ -19,10 +19,6 @@
       "dest": "api/app.py"
     },
     {
-      "src": "/assets/(.*)",
-      "dest": "/Frontend/assets/$1"
-    },
-    {
       "src": "/(.*)",
       "dest": "/Frontend/$1",
       "check": true
